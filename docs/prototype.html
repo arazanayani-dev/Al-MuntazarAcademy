@@ -1,0 +1,1207 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Almuntazar Academy Prototype</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Marcellus&family=Amiri:wght@400;700&display=swap">
+<style>
+/* Layout: a role switcher in the top bar; admin roles get a wide working area, teacher and student get a phone-width column */
+:root{
+  --bg:#EEF3EE; --surface:#FFFFFF; --ink:#15251F; --muted:#4A5E57; --line:#D5E0D6;
+  --bar:#0F4C45; --bar-ink:#FFFFFF; --bar-soft:#D6E5DC;
+  --accent:#0F4C45; --accent-ink:#FFFFFF; --link:#0F4C45;
+  --gold:#EBDCAE; --gold-on:#3D2C05; --gold-tint:#F6EBCF; --gold-ink:#5F450B;
+  --ok-tint:#DCE8DD; --ok-ink:#0A3530; --warn-tint:#FBE9DD; --warn-ink:#8A2F10;
+  --field:#8FA398; --shade:rgba(10,30,25,.45);
+  --display:'Marcellus',Georgia,'Times New Roman',serif;
+  --body:'Manrope',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0D1513; --surface:#15201D; --ink:#E6EFEA; --muted:#9FB4AC; --line:#2A3B36;
+  --bar:#0A2824; --bar-ink:#FFFFFF; --bar-soft:#B9CFC6;
+  --accent:#2A7F73; --accent-ink:#FFFFFF; --link:#7FD1C2;
+  --gold:#EBDCAE; --gold-on:#3D2C05; --gold-tint:#3A2F12; --gold-ink:#EBDCAE;
+  --ok-tint:#1C3A33; --ok-ink:#BFE5D8; --warn-tint:#47221A; --warn-ink:#F4B7A3;
+  --field:#5E766E; --shade:rgba(0,0,0,.6); color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#0D1513; --surface:#15201D; --ink:#E6EFEA; --muted:#9FB4AC; --line:#2A3B36;
+  --bar:#0A2824; --bar-ink:#FFFFFF; --bar-soft:#B9CFC6;
+  --accent:#2A7F73; --accent-ink:#FFFFFF; --link:#7FD1C2;
+  --gold:#EBDCAE; --gold-on:#3D2C05; --gold-tint:#3A2F12; --gold-ink:#EBDCAE;
+  --ok-tint:#1C3A33; --ok-ink:#BFE5D8; --warn-tint:#47221A; --warn-ink:#F4B7A3;
+  --field:#5E766E; --shade:rgba(0,0,0,.6); color-scheme:dark }
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45}
+button,input,select,textarea{font:inherit;color:inherit}
+h1,h2,h3,p{margin:0}
+h1{font-size:26px;font-weight:700;text-wrap:balance}
+h2{font-size:17px;font-weight:700}
+h3{font-size:15px;font-weight:700}
+:focus-visible{outline:3px solid var(--gold-ink);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+
+.bar{background:var(--bar);color:var(--bar-ink)}
+.bar-in{max-width:1200px;margin:0 auto;padding:12px 16px;display:flex;flex-wrap:wrap;gap:10px 16px;justify-content:space-between;align-items:center}
+.brand{font-family:var(--display);font-size:20px;letter-spacing:.04em;color:var(--gold)}
+.who{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:13px;color:var(--bar-soft)}
+.who select{height:44px;max-width:100%;padding:0 10px;border:1px solid var(--gold);border-radius:10px;background:transparent;color:var(--bar-ink);font-weight:600}
+.who select option{color:#15251F;background:#FFFFFF}
+.note{background:var(--gold-tint);color:var(--gold-ink);font-size:13px;font-weight:600}
+.note div{max-width:1200px;margin:0 auto;padding:6px 16px}
+.tabs div{max-width:1200px;margin:0 auto;padding:0 16px;display:flex;gap:4px;overflow-x:auto}
+.tab{height:48px;padding:0 14px;border:0;border-bottom:3px solid transparent;background:none;color:var(--muted);font-weight:700;white-space:nowrap;cursor:pointer}
+.tab[aria-current="page"]{color:var(--link);border-bottom-color:var(--link)}
+
+.wrap{max-width:1200px;margin:0 auto;padding-inline:16px;padding-block:20px 48px;display:flex;flex-direction:column;gap:20px}
+.wrap.narrow{max-width:480px}
+.head{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:flex-end}
+.sub{color:var(--muted)}
+.small{font-size:13px}
+.eyebrow{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:12px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px}
+.t-l{font-size:13px;font-weight:600;color:var(--muted)}
+.t-v{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums}
+.t-s{font-size:13px;color:var(--muted)}
+.t-s.warn{color:var(--warn-ink);font-weight:600}
+.cols{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start}
+.cols>.main{flex:999 1 560px;min-width:0;display:flex;flex-direction:column;gap:20px}
+.cols>.side{flex:1 1 320px;min-width:0;display:flex;flex-direction:column;gap:20px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.card-h{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;align-items:center}
+.rows{display:flex;flex-direction:column}
+.row{display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
+.row>div:first-child{flex:1 1 200px;min-width:0}
+.row .b{font-weight:700}
+.warn-t{color:var(--warn-ink)}
+.gold-t{color:var(--gold-ink)}
+.empty{color:var(--muted);padding:8px 0}
+
+.btn{min-height:44px;padding:0 16px;border:2px solid var(--field);border-radius:10px;background:var(--surface);color:var(--ink);font-weight:700;cursor:pointer;white-space:nowrap}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.wide{width:100%;min-height:48px}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+.link{border:0;background:none;padding:0;min-height:44px;color:var(--link);font-weight:700;text-align:left;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+
+.chip{display:inline-block;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap;border:1px solid transparent}
+.chip.ok{background:var(--ok-tint);color:var(--ok-ink)}
+.chip.gold{background:var(--gold-tint);color:var(--gold-ink)}
+.chip.warn{background:var(--warn-tint);color:var(--warn-ink)}
+.chip.warnfill{background:var(--warn-tint);color:var(--warn-ink);border-color:var(--warn-ink)}
+.chip.mute{background:var(--bg);color:var(--muted);border-color:var(--line)}
+
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;white-space:nowrap;font-size:14px}
+th,td{padding:11px 10px;text-align:left;border-top:1px solid var(--line)}
+thead th{border-top:0;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
+tbody th{font-weight:700}
+td.wraptext{white-space:normal;min-width:220px}
+
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.form>.field{flex:1 1 180px}
+.field label,.lab{font-size:13px;font-weight:700}
+.field input,.field select,.field textarea{min-height:46px;padding:8px 12px;border:1px solid var(--field);border-radius:10px;background:var(--surface);width:100%}
+.form{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+.err{color:var(--warn-ink);font-weight:600}
+.checks{display:flex;flex-wrap:wrap;gap:6px 16px}
+.check{display:flex;align-items:center;gap:8px;min-height:44px;cursor:pointer}
+.check input{width:20px;height:20px;accent-color:var(--accent)}
+
+.seg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.pick{min-height:46px;border:2px solid var(--line);border-radius:10px;background:var(--surface);color:var(--muted);font-weight:700;cursor:pointer}
+.pick.on{background:var(--ok-tint);border-color:var(--ok-ink);color:var(--ok-ink)}
+.pick.on.a{background:var(--warn-tint);border-color:var(--warn-ink);color:var(--warn-ink)}
+.pick.on.e{background:var(--gold-tint);border-color:var(--gold-ink);color:var(--gold-ink)}
+.att{display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:56px;border-top:1px solid var(--line)}
+.att .nm{font-weight:600;min-width:0}
+.att .three{display:flex;gap:4px;flex:none}
+.att .pick{width:66px;font-size:12px;padding:0}
+.lesson{display:grid;grid-template-columns:62px 1fr;gap:10px 12px}
+.min{font-size:12px;font-weight:700;padding:4px 0;text-align:center;border-radius:8px;background:var(--gold-tint);color:var(--gold-ink);align-self:start}
+.meter{height:8px;border-radius:4px;background:var(--ok-tint)}
+.meter i{display:block;height:8px;border-radius:4px;background:var(--accent)}
+.sems{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.sems span{padding:8px 0;border-radius:8px;font-size:12px;font-weight:700;text-align:center;background:var(--bg);color:var(--muted)}
+.sems span.done{background:var(--accent);color:var(--accent-ink)}
+.sems span.now{background:var(--gold-tint);color:var(--gold-ink)}
+.opt{display:flex;align-items:center;gap:12px;min-height:58px;padding:10px 14px;border:2px solid var(--line);border-radius:14px;background:var(--surface);text-align:left;font-weight:600;cursor:pointer;width:100%}
+.opt b{flex:none;width:32px;height:32px;border-radius:16px;display:flex;align-items:center;justify-content:center;background:var(--bg)}
+.opt.on{border-color:var(--accent);background:var(--ok-tint);color:var(--ok-ink)}
+.opt.on b{background:var(--accent);color:var(--accent-ink)}
+.qa{padding:12px 0;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:6px}
+.qa ol{margin:0;padding-left:22px}
+.qa li.c,.qa .c{font-weight:700;color:var(--ok-ink)}
+.ar{font-family:'Amiri','Scheherazade New','Traditional Arabic',serif;font-size:24px;line-height:2;text-align:right;direction:rtl}
+.ar.big{font-size:30px;padding:12px 16px;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+textarea.ar{font-size:22px}
+.ar-in{font-family:'Amiri','Scheherazade New','Traditional Arabic',serif;font-size:1.35em;line-height:1.9}
+td.wrapcell{white-space:normal;min-width:150px}
+
+.overlay{position:fixed;inset:0;background:var(--shade);display:flex;align-items:flex-start;justify-content:center;padding:max(24px,env(safe-area-inset-top,0px)) 16px 24px;overflow-y:auto;z-index:20}
+.modal{background:var(--surface);border-radius:16px;padding:20px;width:100%;max-width:560px;display:flex;flex-direction:column;gap:14px}
+.msg{white-space:pre-line;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:14px}
+.cert{border:2px solid var(--gold-ink);outline:1px solid var(--gold-ink);outline-offset:-8px;border-radius:6px;padding:28px 20px;text-align:center;display:flex;flex-direction:column;gap:10px;background:var(--surface)}
+.cert .cn{font-family:var(--display);font-size:22px;letter-spacing:.04em}
+.cert .nm{font-family:var(--display);font-size:26px}
+.cert .sig{margin:8px auto 0;padding:14px 18px;border:1px dashed var(--field);border-radius:8px;color:var(--muted);font-size:13px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);max-width:calc(100% - 32px);background:var(--ink);color:var(--bg);padding:12px 16px;border-radius:12px;font-weight:600;z-index:30}
+.shell{display:flex;align-items:flex-start;max-width:1440px;margin:0 auto}
+.shell>main{flex:1 1 auto;min-width:0;width:100%}
+.side{display:none}
+.navi{display:flex;align-items:center;gap:12px;width:100%;min-height:44px;padding:0 12px;border:0;border-radius:10px;background:none;color:var(--muted);font-weight:600;text-align:left;cursor:pointer}
+.navi svg{width:20px;height:20px;flex:none}
+.navi:hover{background:var(--bg);color:var(--ink)}
+.navi[aria-current="page"]{background:var(--ok-tint);color:var(--ok-ink);font-weight:700}
+.side-who{padding:4px 12px 14px;margin-bottom:6px;border-bottom:1px solid var(--line)}
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:15;display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);box-shadow:0 -4px 16px rgba(0,0,0,.06)}
+.bt{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:62px;padding:6px 2px;border:0;background:none;color:var(--muted);font-size:11.5px;font-weight:700;cursor:pointer;min-width:0}
+.bt span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bt svg{width:22px;height:22px;padding:3px 16px;box-sizing:content-box;border-radius:999px}
+.bt[aria-current="page"]{color:var(--link)}
+.bt[aria-current="page"] svg{background:var(--ok-tint);color:var(--ok-ink)}
+.more-sheet{position:fixed;left:8px;right:8px;bottom:calc(70px + env(safe-area-inset-bottom,0px));z-index:16;display:flex;flex-direction:column;gap:2px;padding:8px;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+.has-nav>main{padding-bottom:104px}
+@media (min-width:900px){
+  .side{display:flex;flex-direction:column;gap:2px;width:236px;flex:none;position:sticky;top:0;align-self:flex-start;max-height:100vh;overflow-y:auto;padding:20px 12px;border-right:1px solid var(--line);min-height:calc(100vh - 96px)}
+  .tabbar,.more-sheet{display:none}
+  .has-nav>main{padding-bottom:48px}
+  .has-nav>.wrap.narrow{max-width:760px}
+}
+@media (max-width:899px){.toast{bottom:calc(84px + env(safe-area-inset-bottom,0px))}}
+</style>
+
+<div id="app"></div>
+<div id="modal-root"></div>
+<div id="toast" class="toast" role="status" hidden></div>
+
+<script>
+(function(){
+'use strict';
+const TODAY='2026-10-12';
+const DOW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const DOWL=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pd=i=>{const a=i.split('-').map(Number);return new Date(a[0],a[1]-1,a[2])};
+const iso=t=>t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0');
+const addDays=(i,n)=>{const t=pd(i);t.setDate(t.getDate()+n);return iso(t)};
+const fd=i=>{const t=pd(i);return DOW[t.getDay()]+' '+t.getDate()+' '+MON[t.getMonth()]};
+const fdl=i=>{const t=pd(i);return DOWL[t.getDay()]+', '+t.getDate()+' '+MON[t.getMonth()]};
+const daysAgo=i=>Math.round((pd(TODAY)-pd(i))/864e5);
+const ft=m=>{m=((m%1440)+1440)%1440;const h=Math.floor(m/60),mm=m%60;return ((h+11)%12+1)+':'+String(mm).padStart(2,'0')+' '+(h<12?'AM':'PM')};
+function rng(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const rnd=rng(11);
+
+/* ---------- sample data ---------- */
+const BELIEF=['Tauheed','Adl','Nabuwwat','Imamat','Maad'];
+const INTRO=['What is Religion?','Misunderstandings about Religion',"Imam Ali's wager",'Necessary Qualities of a Religion','Test and certificate'];
+const S={
+  role:'super',view:'home',p:{},modal:null,draft:null,exam:null,form:{},back:null,
+  courses:[
+    {code:'INR',name:'Introductory',sems:1,weeks:5},
+    {code:'BAS',name:'Basic',sems:5,weeks:8},
+    {code:'INT',name:'Intermediate',sems:5,weeks:13},
+    {code:'ADV',name:'Advance',sems:5,weeks:26}],
+  subjects:[
+    {key:'q',name:'Quran recitation',min:5,exam:false},
+    {key:'b',name:'Belief',min:30,exam:true},
+    {key:'l',name:'Islamic Laws',min:15,exam:true},
+    {key:'e',name:'Ethics',min:10,exam:true}],
+  locations:[
+    {code:'BAH',name:'Bahrain',primary:'Br. Yusuf',secondary:'Br. Naqi',coordinator:'Sr. Amina',callDay:'Sunday',callTime:'8:30 PM',stat:{classes:10,students:112,held:98,att:90,pass:93,calls:4,actions:1,await:0,unlogged:0}},
+    {code:'DAR',name:'Dar es Salaam',primary:'Br. Murtaza',secondary:'Br. Taqi',coordinator:'Br. Akbar',callDay:'Tuesday',callTime:'9:00 PM',stat:{classes:10,students:92,held:96,att:85,pass:87,calls:3,actions:2,await:1,unlogged:1}},
+    {code:'KUL',name:'Kuala Lumpur',primary:'Br. Imran',secondary:'Br. Sadiq',coordinator:'None yet',callDay:'Friday',callTime:'8:00 PM',stat:{classes:5,students:48,held:92,att:81,pass:85,calls:2,actions:5,await:1,unlogged:3}},
+    {code:'LON',name:'London',primary:'Br. Sajjad',secondary:'Br. Baqir',coordinator:'Sr. Hawra',callDay:'Wednesday',callTime:'9:30 PM',stat:{classes:12,students:126,held:97,att:88,pass:90,calls:4,actions:0,await:0,unlogged:0}},
+    {code:'MUM',name:'Mumbai',primary:'Br. Jafar',secondary:'Br. Kazim',coordinator:'Sr. Sabiha',callDay:'Monday',callTime:'8:00 PM',live:true},
+    {code:'TOR',name:'Toronto',primary:'Br. Mehdi',secondary:'Br. Askari',coordinator:'Sr. Naseem',callDay:'Thursday',callTime:'8:00 PM',stat:{classes:9,students:94,held:95,att:84,pass:88,calls:4,actions:2,await:0,unlogged:0}}],
+  teachers:[
+    {id:'t1',name:'Sr. Maryam',g:'F'},{id:'t2',name:'Sr. Fatima A.',g:'F'},{id:'t3',name:'Br. Ali R.',g:'M'},
+    {id:'t4',name:'Br. Hasan M.',g:'M'},{id:'t5',name:'Sr. Zehra N.',g:'F'},{id:'t6',name:'Br. Qasim T.',g:'M'},
+    {id:'t7',name:'Br. Mohsin D.',g:'M'},{id:'t8',name:'Sr. Rabab S.',g:'F'}],
+  classes:[],students:[],sessions:[],results:[],published:{'MUM-BAS-003|1':true},
+  charts:{'INR-1':true,'BAS-1':true,'BAS-2':true},
+  exams:[
+    {id:'BAS-2-b',course:'BAS',sem:2,sub:'b',open:false,from:'2026-11-02',to:'2026-11-08'},
+    {id:'BAS-2-l',course:'BAS',sem:2,sub:'l',open:false,from:'2026-11-02',to:'2026-11-08'},
+    {id:'BAS-2-e',course:'BAS',sem:2,sub:'e',open:false,from:'2026-11-02',to:'2026-11-08'}],
+  questions:[],
+  traditions:[
+    {id:'h1',text:'[Tradition on the significance of acquiring knowledge: text to be supplied by the academic team]',source:'[Source]'},
+    {id:'h2',text:'[Second tradition: text to be supplied by the academic team]',source:'[Source]'}],
+  calls:[{date:'2026-09-14',status:'Held'},{date:'2026-09-21',status:'Held'},{date:'2026-09-28',status:'Missed'},{date:'2026-10-05',status:'Held'}],
+  nextCall:'2026-10-12',
+  actions:[
+    {id:'a1',text:'Confirm the Semester 2 exam window with the academic team',owner:'Br. Kazim',due:'2026-10-09',done:false,rem:2},
+    {id:'a2',text:'Follow up the two unlogged sessions',owner:'Sr. Sabiha',due:'2026-10-12',done:false,rem:0},
+    {id:'a3',text:'Find a teacher for MUM-BAS-005',owner:'Br. Jafar',due:'2026-10-14',done:false,rem:0}],
+  regs:[
+    {id:'r1',name:'Hawra B.',g:'F',course:'INR',city:'Pune'},
+    {id:'r2',name:'Zaki F.',g:'M',course:'BAS',city:'Mumbai'},
+    {id:'r3',name:'Insiya Q.',g:'F',course:'BAS',city:'Nairobi'}],
+  prefs:{email:true,wa:true,absence:true}
+};
+const SIS=['Batool','Kulsum','Ruqayya','Masooma','Narjis','Zehra','Sukaina','Tahera','Rabab','Hawra','Amina','Naseem','Shabnam','Farwa','Kaneez','Nargis','Zahra','Mehjabeen','Sughra','Asiya','Hajra','Khadija','Sayyeda','Tasneem','Insiya','Arwa','Alia','Samina','Rubab','Nazneen','Shahida','Fizza','Bushra','Kausar','Maryam','Sakina','Fatima'];
+const BRO=['Ali','Hasan','Husain','Abbas','Mehdi','Sajjad','Baqir','Sadiq','Taqi','Naqi','Askari','Murtaza','Haider','Qasim','Akbar','Asghar','Mohsin','Imran','Yusuf','Salman','Meesam','Zeeshan','Kumail','Ammar','Mikail','Yasir','Zaki','Riyaz','Shabbir','Mustafa','Jawad','Hadi','Sibtain'];
+const INI='KSAJNTBDFQZHRM';
+let nF=0,nM=0,nS=0,nX=0;
+function mkName(g){const list=g==='F'?SIS:BRO;const i=g==='F'?nF++:nM++;return list[i%list.length]+' '+INI[(i*5+Math.floor(i/list.length)*3)%INI.length]+'.'}
+function mkClass(c,n,first){
+  S.classes.push(c);
+  for(let i=0;i<n;i++){
+    const f=first&&first[i];
+    S.students.push({id:f&&f.id||('s'+(++nS)),name:f?f.name:mkName(c.g),g:c.g,classId:c.id,joined:f&&f.joined||'2026-01-01',p:f&&f.p||(rnd()<.2?.78:.94),city:f&&f.city||''});
+  }
+}
+function mkSessions(cid,last,count,o){
+  o=o||{};const cls=S.classes.find(c=>c.id===cid);let wk=o.startWeek||1;
+  for(let i=count-1;i>=0;i--){
+    const dt=addDays(last,-7*i);const cancelled=(o.cancelled||[]).includes(dt);const unlogged=(o.unlogged||[]).includes(dt);
+    const x={id:'x'+(++nX),classId:cid,date:dt,held:!cancelled,logged:cancelled||!unlogged,week:cancelled?null:wk,att:{},reason:cancelled?'Teacher travelling':'',loggedBy:''};
+    if(!cancelled){
+      if(x.logged){S.students.filter(s=>s.classId===cid&&s.joined<=dt).forEach(s=>{x.att[s.id]=rnd()<s.p?'p':'a'});x.loggedBy=teacherName(cls.teacherId)}
+      wk++;
+    }
+    S.sessions.push(x);
+  }
+}
+function forceLast(stId,vals){
+  const st=S.students.find(s=>s.id===stId);
+  const ss=S.sessions.filter(x=>x.classId===st.classId&&x.held&&x.logged).sort((a,b)=>a.date<b.date?1:-1);
+  vals.forEach((v,i)=>{if(ss[i])ss[i].att[stId]=v});
+}
+function teacherName(id){const t=S.teachers.find(t=>t.id===id);return t?t.name:''}
+const T=h=>h*60;
+mkClass({id:'MUM-INR-002',loc:'MUM',course:'INR',sem:1,g:'F',teacherId:'t2',day:3,time:T(20),status:'active'},11);
+mkClass({id:'MUM-BAS-003',loc:'MUM',course:'BAS',sem:2,g:'F',teacherId:'t1',assistantId:'zainab',day:4,time:T(19.5),status:'active'},14,[
+  {id:'zainab',name:'Zainab H.',p:1,city:'Toronto'},{id:'fatimar',name:'Fatima R.',p:1},{id:'sakinam',name:'Sakina M.',p:1}]);
+mkClass({id:'MUM-BAS-004',loc:'MUM',course:'BAS',sem:2,g:'M',teacherId:'t3',day:0,time:T(9),status:'active'},12);
+mkClass({id:'MUM-BAS-005',loc:'MUM',course:'BAS',sem:1,g:'M',teacherId:null,day:5,time:T(20),status:'awaiting',createdBy:'Sr. Sabiha',createdOn:'2026-10-09'},0);
+mkClass({id:'MUM-INT-001',loc:'MUM',course:'INT',sem:1,g:'M',teacherId:'t4',day:6,time:T(20.5),status:'active'},16,[{id:'newm',name:'Riyaz D.',joined:'2026-10-05',p:1}]);
+mkClass({id:'MUM-ADV-001',loc:'MUM',course:'ADV',sem:1,g:'F',teacherId:'t5',day:6,time:T(18),status:'active'},23,[
+  {id:'fu1',name:'Shahida T.',p:1},{id:'fu2',name:'Kausar N.',p:1},{id:'rk1',name:'Bushra F.',p:1},{id:'ex1',name:'Fizza Q.',p:1}]);
+mkClass({id:'BAH-BAS-001',loc:'BAH',course:'BAS',sem:1,g:'F',teacherId:'t1',day:6,time:T(21),status:'active'},9);
+mkSessions('MUM-INR-002','2026-10-07',3,{unlogged:['2026-10-07']});
+mkSessions('MUM-BAS-003','2026-10-08',5,{unlogged:['2026-10-08']});
+mkSessions('MUM-BAS-004','2026-10-11',1);
+mkSessions('MUM-INT-001','2026-10-10',10,{cancelled:['2026-09-05']});
+mkSessions('MUM-ADV-001','2026-10-10',20,{unlogged:['2026-10-03']});
+mkSessions('BAH-BAS-001','2026-10-10',4);
+forceLast('zainab',['p','p','p','a']);
+forceLast('sakinam',['a','a','p','p']);
+forceLast('fatimar',['p','p','a','p']);
+forceLast('fu1',['a','a','a','a','a','p']);
+forceLast('fu2',['a','a','a','a','p']);
+forceLast('rk1',['a','a','p']);
+forceLast('ex1',['e','p','p']);
+forceLast('newm',['p']);
+/* Semester 1 results for the two Basic classes now in Semester 2 */
+['MUM-BAS-003','MUM-BAS-004'].forEach(cid=>{
+  S.students.filter(s=>s.classId===cid).forEach(s=>{['b','l','e'].forEach(sub=>{
+    S.results.push({sid:s.id,cid:cid,course:'BAS',sem:1,sub:sub,pct:58+Math.floor(rnd()*38),attempt:1})})})});
+const setRes=(sid,sub,pct)=>{S.results.find(r=>r.sid===sid&&r.sem===1&&r.sub===sub).pct=pct};
+setRes('zainab','b',82);setRes('zainab','l',64);setRes('zainab','e',76);setRes('fatimar','l',42);
+/* Question bank: Belief questions are definitional; the others are placeholders for the academic team */
+let nQ=0;
+function addQ(course,sem,sub,text,options,correct,extra){S.questions.push(Object.assign({id:'q'+(++nQ),course,sem,sub,text,options,correct,retired:false,type:'single'},extra||{}))}
+addQ('BAS',2,'b','Adl, the subject of this semester, refers to which belief?',['The oneness of God','Divine justice','Prophethood','The Day of Resurrection'],1);
+addQ('BAS',2,'b','Which of these is one of the five roots of religion studied in this course?',['Salat','Sawm','Imamat','Hajj'],2);
+addQ('BAS',2,'b','Tauheed, studied in Semester 1, means:',['The oneness of God','Divine justice','Prophethood','Leadership after the Prophet'],0);
+addQ('BAS',2,'b','Nabuwwat, the subject of Semester 3, means:',['Divine justice','The Day of Resurrection','Prophethood','The oneness of God'],2);
+addQ('BAS',2,'b','Maad, the subject of Semester 5, refers to:',['Prophethood','The Day of Resurrection','Divine justice','Leadership after the Prophet'],1);
+addQ('BAS',2,'b','The five roots of religion are Tauheed, Adl, Nabuwwat, Imamat and ____.',[],0,{type:'fill',answers:['Maad','Meaad']});
+addQ('BAS',2,'b','Match each term to its meaning.',[],0,{type:'match',left:['Tauheed','Adl','Nabuwwat','Maad'],right:['The oneness of God','Divine justice','Prophethood','The Day of Resurrection']});
+addQ('BAS',2,'b','Select the translation of this ayat (Al-Fatiha 1:2).',['In the name of Allah, the Beneficent, the Merciful','All praise belongs to Allah, Lord of the worlds','Master of the Day of Judgement','Guide us on the straight path'],1,{type:'ayah',ar:'الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ'});
+[['l','Islamic Laws'],['e','Ethics']].forEach(p=>{for(let i=1;i<=3;i++)addQ('BAS',2,p[0],'['+p[1]+' sample question '+i+': the academic team writes the real question]',['[Option A, marked correct]','[Option B]','[Option C]','[Option D]'],0)});
+
+const PAPER={"file":"Tauheed_1_MCQ_paper_-_new.docx","bank":["مُتَمَسِّكٌ","رِوَايَتِهِمْ","يَتَعَلَّم","يُعَلِّمُهَا","زَعَمَ","أَصْغَى","شَهِيْدًا","فِراشِهِ","مَعْرِفَتِهِمْ","عَبَدَهُ","غَفُوراً","بَيْتِهِ","عُقُوْلِهِمْ"],"questions":[{"s":1,"n":1,"type":"single","text":"The importance of a person is proportion to his","options":["qualification","race/ancestry","family surname","knowledge & Maarefat"],"correct":"","marks":1,"how":"No answer is marked in the file. Choose it here."},{"s":1,"n":2,"type":"single","text":"The knowledge of a person should lead him to ____","options":["self-recognition","Tauheed","Qiyamat","all the above"],"correct":1,"marks":1,"how":"Answer found in the file: option B, in yellow highlight."},{"s":1,"n":3,"type":"single","text":"True knowledge leads to ____","options":["Submission to Allah","Reciting 50 verses of Quran daily","Reciting namaz at Awwal Waqt","all the above"],"correct":"","marks":1,"how":"No answer is marked in the file. Choose it here."},{"s":1,"n":4,"type":"single","text":"If a person has ‘True knowledge’ than his status will be elevated in front of ____","options":["his parents","Allah","his family","all the above"],"correct":1,"marks":1,"how":"Answer found in the file: option B, in yellow highlight."},{"s":1,"n":5,"type":"single","text":"“Then man should look at his food”. In this verse, ‘food’ implies ____","options":["the food that we eat","the words that we speak","the thoughts that we think","none of the above"],"correct":"","marks":1,"how":"No answer is marked in the file. Choose it here."},{"s":1,"n":6,"type":"single","text":"____ says, ‘I am amazed at the one who thinks about his food to save his stomach from harm but exposes his heart to destruction’","options":["Imam Mohammad Baqir (as)","Imam Ali Raza (as)","Imam Hasan Askari (as)","Imam Hasan Mujtaba (as)"],"correct":"","marks":1,"how":"No answer is marked in the file. Choose it here."},{"s":1,"n":7,"type":"single","text":"“Do not acquire knowledge from the one who does not benefit from it” This was said by ____","options":["Aristotle","H. Luqman","H. Zulqarnain","Imam Jafar Sadiq (as)"],"correct":"","marks":1,"how":"No answer is marked in the file. Choose it here."},{"s":1,"n":8,"type":"single","text":"“The one who takes the religion from ____ will be deviated","options":["astrologers","philosophers","Sufis","all the above"],"correct":"","marks":1,"how":"No answer is marked in the file. Choose it here."},{"s":1,"n":9,"type":"single","text":"The narrators of tradition are reliable since they ____","options":["are fluent in Arabic","have studied Mantiq (logic)","possess the knowledge of Quran","have authored many books"],"correct":"","marks":1,"how":"No answer is marked in the file. Choose it here."},{"s":1,"n":10,"type":"single","text":"“The one who listens to any speaker has indeed ____ him","options":["admired","praised","followed","worshipped"],"correct":"","marks":1,"how":"No answer is marked in the file. Choose it here."},{"s":1,"n":11,"type":"single","text":"We Shias believe that the bearers of true and correct knowledge are ____","options":["our Maraje-e-Taqleed","all the Mujtahids","the Ahle Bait (a.s.)","all the above"],"correct":"","marks":1,"how":"No answer is marked in the file. Choose it here."},{"s":1,"n":12,"type":"single","text":"If someone claims to be a true Shia, he must","options":["be obedient to parents","have a proper beard","wear a ring of Aqeeq/firoza","acquire his knowledge from the Ahle Bait (as)"],"correct":"","marks":1,"how":"No answer is marked in the file. Choose it here."},{"s":1,"n":13,"type":"single","text":"‘Ask the people of ‘Zikr’ if you don’t know’. The word ‘Zikr’ refers to","options":["Ahle Bait (a.s)","the Holy Quran","Sunnah of Prophet (sa)","all the above"],"correct":"","marks":1,"how":"No answer is marked in the file. Choose it here."},{"s":1,"n":14,"type":"single","text":"The affairs of Ahlul Bayt (a.s.) are enlivened by ____ traditions","options":["listening & writing","listening & practicing","writing & practicing","listening and teaching"],"correct":"","marks":1,"how":"No answer is marked in the file. Choose it here."},{"s":1,"n":15,"type":"single","text":"Imam Ali Raza (as) says, “May Allah ____ of the one who enlivens our affairs…’","options":["increase the sustenance","grant long life","have mercy","all the above"],"correct":"","marks":1,"how":"No answer is marked in the file. Choose it here."},{"s":1,"n":16,"type":"single","text":"“O my son! Recognise the status of Shias according to the number of they narrate….” This was said by ____","options":["Imam Ali (as) to Imam Hasan (as)","Imam Ali (as) to Imam Husain (as)","H. Luqman to his son","none of the above"],"correct":"","marks":1,"how":"No answer is marked in the file. Choose it here."},{"s":1,"n":17,"type":"single","text":"وَ بِالدِّرَايَاتِ لِلرِّوَايَاتِ يَعْلُو الْمُؤْمِنُ إِلَى أَقْصَى دَرَجَاتِ ____","options":["الْإِيمَانِ","الْعِلْمِ","الْاَخْلَاقِ","اليَقِيْنِ"],"correct":"","marks":1,"how":"No answer is marked in the file. Choose it here."},{"s":1,"n":18,"type":"single","text":"“Whoever of you dies ____ while he has the knowledge of the right of his Lord and the right of His Messenger (s.a.w.a.) and his Ahle Bait (a.s.) will die a martyr”","options":["in masjid","in Holy Kaabah","on the bed","in the battlefield"],"correct":"","marks":1,"how":"No answer is marked in the file. Choose it here."},{"s":1,"n":19,"type":"single","text":"“I wonder about the fault of these groups…..” This hadees refers to ____","options":["the Khawarji","the Ashairah","the innovators","all the above"],"correct":"","marks":1,"how":"No answer is marked in the file. Choose it here."},{"s":1,"n":20,"type":"single","text":"When there are different of views on religion, we must refer to ____","options":["The Mujtahid","the Marja-e-Taqleed","The Ahle Bait (a.s.)","all the above"],"correct":"","marks":1,"how":"No answer is marked in the file. Choose it here."},{"s":1,"n":21,"type":"single","text":"Quranic concepts can be understood only ____","options":["If a person has studied in Hauz-e-Ilmiyyah","if a person is fluent in Arabic","By referring to the traditions of Ahle Bait (a.s.)","all the above"],"correct":"","marks":1,"how":"No answer is marked in the file. Choose it here."},{"s":1,"n":22,"type":"single","text":"‘Both of you go East & West, you will not find true knowledge…..’ The two individuals referred in the above hadees are ____","options":["Salmah Ibn Kuhail and Hakam Ibn Utaibah","Abu Bakr & Umar","Umar & Abu Hurairah","Bukhari & Muslim"],"correct":"","marks":1,"how":"No answer is marked in the file. Choose it here."},{"s":1,"n":23,"type":"single","text":"اِنْ ا رَدْتَ الْعِلْمَ ____ فَعِنْدَنَااَهْلَالْبَيْتِ فَنَحْنُ اَهْلُالذِّكْر","options":["الحَقِيْقَ","الوَسِيعَ","الغَيْبَ","الصَّحِيْحَ"],"correct":"","marks":1,"how":"No answer is marked in the file. Choose it here."},{"s":1,"n":24,"type":"single","text":"“Referring to Quran & traditions” means we should ____","options":["Quote them in our speeches","write them in our books and articles","Not interpret the Quran as per our ideas","all the above"],"correct":"","marks":1,"how":"No answer is marked in the file. Choose it here."},{"s":1,"n":25,"type":"single","text":"يَا يُونُسُ- لَا تَكُونَنَّ ____","options":["جَاهلً","مُبْتَدِعاً","مُتَكَبِّراً","كاَذِباً"],"correct":"","marks":1,"how":"No answer is marked in the file. Choose it here."},{"s":1,"n":26,"type":"single","text":"The Imams (as) explanation of religion is based on ____","options":["Allah’s explanation","the Holy Prophet’s (s.a.w.a) explanation","Their divinely gifted knowledge","all the above"],"correct":"","marks":1,"how":"No answer is marked in the file. Choose it here."},{"s":1,"n":27,"type":"single","text":"‘They do not believe in the unknown and do not avoid the evil. They act on the ____ and walk on the path of ____","options":["Doubts, desires","Quran, ancestors","Certainty, Quran","Sunnah, the past prophets"],"correct":"","marks":1,"how":"No answer is marked in the file. Choose it here."},{"s":1,"n":28,"type":"single","text":"Innovation (Bidat) in Islam is ____","options":["Prohibited in old Ahkam issues that are already found in books of traditions","completely prohibited","not prohibited for the Marja’ in new issues faced by the society","Both (a) & (b)"],"correct":"","marks":1,"how":"No answer is marked in the file. Choose it here."},{"s":1,"n":29,"type":"single","text":"“Only the ____ fear Allah from among His servants.”","options":["meek","pious","Scholars","all the above"],"correct":"","marks":1,"how":"No answer is marked in the file. Choose it here."},{"s":1,"n":30,"type":"single","text":"“And those to whom ____ has been given see that which has been revealed to you from your Lord is ____ ”","options":["The certainty, the Truth","the vision, Infinite","The knowledge, the Truth","piety, eternal"],"correct":"","marks":1,"how":"No answer is marked in the file. Choose it here."},{"s":2,"n":1,"type":"combo","text":"The attributes of true knowledge are","stmts":["Makes a person god-fearing.","Makes a person punctual of salat.","Makes a person recognize the Imam (as).","Makes a person submissive to Allah.","Makes a person respectful of his parents.","Makes a recognize the Prophet."],"options":["i, ii, v, iv","i, ii, iii, vi","i, iii, iv, vi","iii, iv, v"],"correct":"","marks":2,"how":"No answer is marked in the file. Choose it here."},{"s":2,"n":2,"type":"combo","text":"Then man must look at the food that he eats. The word “food” refers to","stmts":["All Aqaed","Only Tauheed","All Ahkam","All Akhlaq","Only Wilayat","Only Nabuwwat"],"options":["i, iii, iv","ii, v, vi","Ii, iii, iv","iii, iv, v"],"correct":"","marks":2,"how":"No answer is marked in the file. Choose it here."},{"s":2,"n":3,"type":"combo","text":"Imam Zamana (as) has asked us to take knowledge from the scholars because,","stmts":["They are pious.","They have studied in Hauz-e-Ilmiya.","They are his (as) Hujjat upon the people.","They possess the knowledge of Quran.","They possess the knowledge of traditions.","They are fluent in Arabic."],"options":["i, ii, vi","i, ii, iii","Iii, iv, v","iv, v, vi"],"correct":"","marks":2,"how":"No answer is marked in the file. Choose it here."},{"s":2,"n":4,"type":"combo","text":"According to traditions, being a ‘Shia’ means,","stmts":["Praying namaz with open hands.","Believing in twelve Imams (as).","Referring to Quran in all matters","Referring to traditions of the Holy Prophet (s.a.w.a).","Referring to traditions of Ahle Bait (a.s.).","Doing prostration on sajdagah."],"options":["i, ii, vi","ii, v, vi","ii, iii, v","i, v, vi"],"correct":"","marks":2,"how":"No answer is marked in the file. Choose it here."},{"s":2,"n":5,"type":"combo","text":"The status of a Shia is determined by,","stmts":["Regular recitation of Namaz-e-Shab","Keeping mustahab fasts","Narration of traditions of Ahle Bait (a.s.)","Understanding of traditions of Ahle Bait (a.s.)","Having sign of prostration on forehead","Following the teachings of Ahle Bait (a.s.)"],"options":["i, v, vi","i, ii, v","iii, iv, v","iii, iv, vi"],"correct":"","marks":2,"how":"No answer is marked in the file. Choose it here."},{"s":3,"n":1,"type":"bank","text":"يَا بُنَيَّ، اعْرِفْ‏ مَنَازِلَ الشِّيعَةِ عَلَى قَدْرِ ____ وَ ____","blanks":2,"correct":"","marks":1},{"s":3,"n":2,"type":"bank","text":"رَحِمَ اللهُ عَبْداًاَحْيَااَمْرَنَا…. قَال ____ عُلُوْمَنَا وَ ____ النَّاسَ","blanks":2,"correct":"","marks":1},{"s":3,"n":3,"type":"bank","text":"كَذَبَ مَنْ ____ أَنَّهُ مِنْ شِيعَتِنَا وَ هُوَ ____ بِعُرْوَةِ غَيْرِنَا","blanks":2,"correct":"","marks":1},{"s":3,"n":4,"type":"bank","text":"مَنْ ____ ‏ إِلَى نَاطِقٍ‏ فَقَدْ ‏ ____","blanks":2,"correct":"","marks":1},{"s":3,"n":5,"type":"bank","text":"مَنْ مَاتَ مِنْكُمْ عَلى ____ وَ هُوَ عَلَى مَعْرِفَةِ حَقِّ رَبِّهِ، وَ حَقِّ رَسُولِهِ وَ أَهْلِ بَيْتِهِ ماتَ ____","blanks":2,"correct":"","marks":1}]};
+/* ---------- teaching materials and training (sample) ---------- */
+S.teachers.forEach(t=>{t.access='own'});
+S.materials=[
+  {id:'m1',title:'Basic Semester 2 syllabus: Belief (Adl)',type:'Syllabus',course:'BAS',sem:2,sub:'b',week:null,share:true,src:'Basic-Sem2-Belief-syllabus.pdf',date:'2026-09-01'},
+  {id:'m2',title:'Basic Semester 2 syllabus: Islamic Laws',type:'Syllabus',course:'BAS',sem:2,sub:'l',week:null,share:true,src:'Basic-Sem2-Laws-syllabus.pdf',date:'2026-09-01'},
+  {id:'m3',title:'Basic Semester 2 syllabus: Ethics',type:'Syllabus',course:'BAS',sem:2,sub:'e',week:null,share:true,src:'Basic-Sem2-Ethics-syllabus.pdf',date:'2026-09-01'},
+  {id:'m4',title:'Teacher guide: Adl, Semester 2',type:'Teacher guide',course:'BAS',sem:2,sub:'b',week:null,share:false,src:'Teacher-guide-Adl.pdf',date:'2026-08-28'},
+  {id:'m5',title:'Slides for week 6: Belief',type:'Slides',course:'BAS',sem:2,sub:'b',week:6,share:true,src:'https://drive.google.com/[slides link]',date:'2026-10-05'},
+  {id:'m6',title:'Basic Semester 1 syllabus: Belief (Tauheed)',type:'Syllabus',course:'BAS',sem:1,sub:'b',week:null,share:true,src:'Basic-Sem1-Belief-syllabus.pdf',date:'2026-08-01'},
+  {id:'m7',title:'Handbook: teaching adults online',type:'Teacher guide',course:'ALL',sem:0,sub:'all',week:null,share:false,src:'Online-teaching-handbook.pdf',date:'2026-07-15'},
+  {id:'m8',title:'Teacher guide: Tauheed, Intermediate Semester 1',type:'Teacher guide',course:'INT',sem:1,sub:'b',week:null,share:false,src:'Teacher-guide-Int-Tauheed.pdf',date:'2026-08-10'},
+  {id:'m9',title:'Basic Semester 4 syllabus: Belief (Imamat)',type:'Syllabus',course:'BAS',sem:4,sub:'b',week:null,share:true,src:'Basic-Sem4-Belief-syllabus.pdf',date:'2026-08-01'},
+  {id:'m10',title:'Basic Semester 2 reading book: Adl',type:'Book',course:'BAS',sem:2,sub:'b',week:null,pages:420,share:true,src:'Basic-Sem2-reading-book.pdf',date:'2026-09-05'},
+  {id:'m11',title:'General reading book: Ethics in daily life',type:'Book',course:'ALL',sem:0,sub:'all',week:null,pages:180,share:true,src:'Ethics-daily-life.pdf',date:'2026-08-20'}];
+S.shares=[{mid:'m10',cid:'MUM-BAS-003',date:'2026-09-14',by:'Sr. Maryam'},{mid:'m1',cid:'MUM-BAS-003',date:'2026-09-10',by:'Sr. Maryam'},{mid:'m6',cid:'BAH-BAS-001',date:'2026-09-19',by:'Sr. Maryam'}];
+S.trainings=[
+  {id:'tr1',title:'Refresher: Adl before Semester 2 week 6',kind:'Refresher',course:'BAS',sem:2,date:'2026-10-17',time:11*60,mode:'Online on Google Meet',facilitator:'Sr. Tahera',req:true,rsvp:{},attended:null},
+  {id:'tr2',title:'Using the session log and student follow-up',kind:'Programme',course:'ALL',sem:0,date:'2026-10-25',time:10*60,mode:'Online on Google Meet',facilitator:'Br. Abbas',req:false,rsvp:{t3:'yes',t4:'yes',t5:'no'},attended:null},
+  {id:'tr3',title:'Refresher: Imamat before Semester 4',kind:'Refresher',course:'BAS',sem:4,date:'2026-11-07',time:11*60,mode:'Online on Google Meet',facilitator:'Sr. Tahera',req:true,rsvp:{},attended:null},
+  {id:'tr0',title:'Orientation for teachers',kind:'Programme',course:'ALL',sem:0,date:'2026-09-20',time:10*60,mode:'Online on Google Meet',facilitator:'Br. Abbas',req:true,rsvp:{t1:'yes',t2:'yes',t3:'yes',t4:'yes',t5:'yes'},attended:{t1:true,t2:true,t3:true,t4:true,t5:false}}];
+const MTYPES=['Syllabus','Book','Teacher guide','Slides','Worksheet','Reading','Video link','Other'];
+const ACCESS={own:'Own classes',course:'Course type',all:'All material'};
+/* ---------- derived values ---------- */
+const course=c=>S.courses.find(x=>x.code===c);
+const cls=id=>S.classes.find(c=>c.id===id);
+const stu=id=>S.students.find(s=>s.id===id);
+const subName=k=>S.subjects.find(s=>s.key===k).name;
+const group=g=>g==='F'?'Sisters':'Brothers';
+const classSessions=cid=>S.sessions.filter(x=>x.classId===cid).sort((a,b)=>a.date<b.date?-1:1);
+const classStudents=cid=>S.students.filter(s=>s.classId===cid);
+const weeksDone=cid=>classSessions(cid).filter(x=>x.held).length;
+function nextDate(c){const ss=classSessions(c.id);let d;if(ss.length){d=addDays(ss[ss.length-1].date,7)}else{d=TODAY;while(pd(d).getDay()!==c.day)d=addDays(d,1)}while(d<TODAY)d=addDays(d,7);return d}
+function whenFor(c,dateIso,off){const total=c.time+(off-5.5)*60;const shift=Math.floor(total/1440);return {date:addDays(dateIso,shift),time:ft(total)}}
+function topicOf(c){return c.course==='INR'?'The Need of Religion':BELIEF[c.sem-1]}
+function courseLabel(c){const k=course(c.course);return k.name+(k.sems>1?' · Sem '+c.sem:'')}
+function weekLabel(c,w){const k=course(c.course);return (c.course==='INR'?'Session ':'Week ')+w+' of '+k.weeks}
+function verseRef(n){if(n<=0)return 'the beginning';return n<=7?'Al-Fatiha 1:'+n:'Al-Baqarah 2:'+(n-7)}
+function versesBefore(c,week){return ((c.sem-1)*course(c.course).weeks+(week-1))*3}
+function lesson(c,week){
+  const loaded=S.charts[c.course+'-'+c.sem];const tag=c.course==='INR'?'Session ':'Week ';
+  const ph=t=>loaded?'['+tag+week+' '+t+' from the syllabus chart]':'[Syllabus chart not loaded yet]';
+  const b=c.course==='INR'?(INTRO[week-1]||'Course complete'):topicOf(c)+': '+ph('sub-topic');
+  return {q:'Resume from '+verseRef(versesBefore(c,week)+1)+' (3 verses)',b:b,l:ph('rulings'),e:ph('topic')};
+}
+function stuStats(s){
+  const ss=classSessions(s.classId).filter(x=>x.held&&x.logged&&x.date>=s.joined);
+  let present=0;ss.forEach(x=>{if((x.att[s.id]||'a')==='p')present++});
+  let miss=0;const missed=[];
+  for(let i=ss.length-1;i>=0;i--){const a=ss[i].att[s.id]||'a';if(a==='e')continue;if(a==='a'){miss++;missed.push(ss[i])}else break}
+  const isNew=daysAgo(s.joined)<=14;
+  const status=miss>=4?'followup':miss>=2?'risk':isNew?'new':'active';
+  return {pct:ss.length?Math.round(present/ss.length*100):null,miss,missed,status,present,counted:ss.length};
+}
+const STAT={new:['gold','New'],active:['ok','Active'],risk:['warn','At risk'],followup:['warnfill','In follow-up']};
+const chip=(k,t)=>'<span class="chip '+k+'">'+esc(t)+'</span>';
+const statChip=k=>chip(STAT[k][0],STAT[k][1]);
+function best(sid,crs,sem,sub){const r=S.results.filter(r=>r.sid===sid&&r.course===crs&&r.sem===sem&&r.sub===sub);return r.length?Math.max.apply(null,r.map(x=>x.pct)):null}
+function semResult(sid,crs,sem){const m=['b','l','e'].map(k=>best(sid,crs,sem,k));if(m.some(x=>x===null))return m.every(x=>x===null)?'none':'incomplete';return m.every(x=>x>=50)?'pass':'fail'}
+function classAtt(cid,since,until){let p=0,n=0;classSessions(cid).filter(x=>x.held&&x.logged&&(!since||x.date>=since)&&(!until||x.date<=until)).forEach(x=>Object.keys(x.att).forEach(k=>{n++;if(x.att[k]==='p')p++}));return n?Math.round(p/n*100):null}
+function locMetrics(code){
+  const cs=S.classes.filter(c=>c.loc===code);const ids=cs.map(c=>c.id);
+  const ss=S.sessions.filter(x=>ids.includes(x.classId));
+  const studs=S.students.filter(s=>ids.includes(s.classId));const st=studs.map(stuStats);
+  const cut=addDays(TODAY,-28);let p=0,n=0;
+  ss.filter(x=>x.held&&x.logged&&x.date>=cut).forEach(x=>Object.keys(x.att).forEach(k=>{n++;if(x.att[k]==='p')p++}));
+  let pass=0,tot=0;
+  cs.forEach(c=>{for(let sem=1;sem<=c.sem;sem++){if(!S.published[c.id+'|'+sem])continue;classStudents(c.id).forEach(s=>{const r=semResult(s.id,c.course,sem);if(r==='pass'||r==='fail'){tot++;if(r==='pass')pass++}})}});
+  const unlogged=ss.filter(x=>x.held&&!x.logged);
+  return {classes:cs.length,students:studs.length,held:ss.filter(x=>x.held).length,planned:ss.length,att:n?Math.round(p/n*100):null,
+    pass:tot?Math.round(pass/tot*100):null,unlogged:unlogged,old:unlogged.filter(x=>daysAgo(x.date)>7).length,
+    risk:st.filter(x=>x.status==='risk').length,fu:st.filter(x=>x.status==='followup').length,
+    awaiting:cs.filter(c=>c.status==='awaiting').length,
+    calls:S.calls.slice(-4).filter(c=>c.status==='Held').length,actions:S.actions.filter(a=>!a.done).length};
+}
+function pendingResults(code){
+  const out=[];S.classes.filter(c=>c.loc===code).forEach(c=>{for(let sem=1;sem<=c.sem;sem++){
+    if(S.published[c.id+'|'+sem])continue;const ids=classStudents(c.id).map(s=>s.id);
+    const taken=ids.filter(id=>semResult(id,c.course,sem)!=='none').length;
+    if(taken)out.push({c:c,sem:sem,taken:taken,total:ids.length})}});
+  return out;
+}
+const ROLES=[
+  {id:'super',label:'Super admin',person:'Br. Abbas'},
+  {id:'academic',label:'Academic team',person:'Sr. Tahera'},
+  {id:'locadmin',label:'Primary responsible, Mumbai',person:'Br. Jafar'},
+  {id:'coord',label:'Coordinator, Mumbai',person:'Sr. Sabiha'},
+  {id:'teacher',label:'Teacher',person:'Sr. Maryam'},
+  {id:'student',label:'Student and class assistant',person:'Zainab H.'}];
+const TABS={
+  super:[['home','Overview'],['locations','Locations'],['masters','Master lists','Masters'],['reports','Reports']],
+  academic:[['chart','Syllabus chart','Chart'],['bank','Question bank','Questions'],['exams','Exams'],['materials','Materials'],['training','Training'],['traditions','Traditions']],
+  locadmin:[['home','Overview'],['classes','Classes'],['students','Students'],['coord','Coordination']],
+  coord:[['home','Overview'],['classes','Classes'],['students','Students']],
+  teacher:[['home','Home'],['classes','Classes'],['materials','Materials'],['training','Training'],['profile','Profile']],
+  student:[['home','Home'],['exams','Exams'],['materials','Materials'],['profile','Profile']]};
+const ICONS={
+  home:'<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>',
+  locations:'<path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>',
+  masters:'<path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01"/>',
+  reports:'<path d="M4 20V11M10 20V5M16 20v-6M21 20H3"/>',
+  chart:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/>',
+  bank:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6M12 17.5h.01"/>',
+  exams:'<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 3h6v3H9zM9 13l2 2 4-4"/>',
+  materials:'<path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5zM5 19.5A1.5 1.5 0 0 0 6.5 21H19v-3M9 7h6"/>',
+  training:'<rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M12 16v4M8 20h8M8 12l3-3 2 2 3-3"/>',
+  traditions:'<path d="M6 4h11a2 2 0 0 1 2 2v14l-3-2-3 2-3-2-3 2V6a2 2 0 0 1 2-2zM9 9h6M9 13h4"/>',
+  classes:'<circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-5 6-5s6 1.7 6 5M16 5a3 3 0 0 1 0 6M18 15c2 .6 3 2.2 3 5"/>',
+  students:'<path d="M2 9l10-5 10 5-10 5zM6 11v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5"/>',
+  coord:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+  profile:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/>',
+  more:'<path d="M5 12h.01M12 12h.01M19 12h.01" stroke-width="3"/>'};
+const icon=k=>'<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+(ICONS[k]||ICONS.home)+'</svg>';
+const me=()=>ROLES.find(r=>r.id===S.role);
+
+/* ---------- weekly reading ---------- */
+S.targets={ayat:350,pages:70};
+S.reading=[];
+const weekStart=d=>{const t=pd(d);return addDays(d,-((t.getDay()+6)%7))};
+const thisWeek=()=>weekStart(TODAY);const lastWeek=()=>addDays(weekStart(TODAY),-7);
+const wkLabel=w=>fd(w)+' to '+fd(addDays(w,6));
+const TG=()=>({ayat:+S.targets.ayat||0,pages:+S.targets.pages||0});
+const rd=(sid,w)=>S.reading.find(r=>r.sid===sid&&r.week===w);
+const metBoth=e=>{const t=TG();return !!e&&e.ayat>=t.ayat&&e.pages>=t.pages};
+const avg=a=>a.length?Math.round(a.reduce((x,y)=>x+y,0)/a.length):null;
+(function(){
+  let seed=11;const rnd=()=>{seed=(seed*9301+49297)%233280;return seed/233280};
+  const weeks=[-35,-28,-21,-14,-7].map(n=>addDays(weekStart(TODAY),n));
+  S.students.forEach(s=>{const c=cls(s.classId);if(!c||(c.loc!=='MUM'&&c.teacherId!=='t1')||c.course==='INR')return;
+    const st=stuStats(s);
+    weeks.forEach((w,i)=>{
+      if(addDays(w,6)<s.joined)return;
+      if(s.id==='zainab'&&i===4)return;
+      if((st.status==='followup'&&i>=2)||(st.status==='risk'&&i>=3)||rnd()<0.15)return;
+      const ayat=Math.min(520,Math.round((0.85+rnd()*0.4)*35)*10);const pages=Math.round((0.85+rnd()*0.4)*70);
+      S.reading.push({sid:s.id,week:w,ayat:s.id==='zainab'?[350,380,320,350][i]:ayat,pages:s.id==='zainab'?[70,64,72,58][i]:pages,book:c.id==='MUM-BAS-003'?'m10':''})})});
+})();
+function readingCard(s,c){
+  const lw=lastWeek(),tw=thisWeek(),t=TG();
+  const f=S.form.rd||(S.form.rd={week:rd(s.id,lw)?tw:lw});
+  const e=rd(s.id,f.week)||{};
+  const books=S.shares.filter(x=>x.cid===c.id).map(x=>S.materials.find(m=>m.id===x.mid)).filter(m=>m&&m.type==='Book');
+  const bar=(v,tt)=>'<div class="meter" aria-hidden="true"><i style="width:'+Math.min(100,Math.round((v||0)/tt*100))+'%"></i></div>';
+  const hist=[0,1,2,3].map(i=>addDays(lw,-7*i)).map(w=>{const x=rd(s.id,w);
+    return '<div class="row"><div><div class="b">'+wkLabel(w)+'</div><div class="sub small">'+(x?x.ayat+' of '+t.ayat+' ayat · '+x.pages+' of '+t.pages+' pages':'Nothing logged')+'</div></div>'+(x?(metBoth(x)?chip('ok','Target met'):chip('gold','Below target')):chip('mute','Not logged'))+'</div>'}).join('');
+  return '<section class="card" id="reading"><div class="card-h"><div class="eyebrow">Weekly reading</div>'+chip('mute','Target: '+t.ayat+' ayat and '+t.pages+' pages a week')+'</div>'+
+    '<div class="seg"><button type="button" class="pick'+(f.week===lw?' on':'')+'" aria-pressed="'+(f.week===lw)+'" data-act="rdWeek" data-arg="'+lw+'">Last week</button><button type="button" class="pick'+(f.week===tw?' on':'')+'" aria-pressed="'+(f.week===tw)+'" data-act="rdWeek" data-arg="'+tw+'">This week</button></div>'+
+    '<div class="sub small">'+wkLabel(f.week)+(f.week===lw?' · you can add or change last week until Tuesday':'')+'</div>'+
+    '<form data-form="rdSave" style="display:flex;flex-direction:column;gap:12px"><div class="form">'+
+      '<div class="field"><label for="rd-a">Ayat recited</label><input id="rd-a" name="ayat" type="number" inputmode="numeric" min="0" max="6236" value="'+(e.ayat==null?'':e.ayat)+'" required></div>'+
+      '<div class="field"><label for="rd-p">Pages read</label><input id="rd-p" name="pages" type="number" inputmode="numeric" min="0" max="2000" value="'+(e.pages==null?'':e.pages)+'" required></div></div>'+
+      '<div class="field"><label for="rd-b">Book</label><select id="rd-b" name="book">'+opts(books.map(m=>[m.id,m.title]).concat([['','Another book']]),e.book==null?(books[0]?books[0].id:''):e.book)+'</select></div>'+
+      (e.ayat!=null?'<div class="small">Ayat: '+e.ayat+' of '+t.ayat+'</div>'+bar(e.ayat,t.ayat)+'<div class="small">Pages: '+e.pages+' of '+t.pages+'</div>'+bar(e.pages,t.pages):'')+
+      '<div class="btns"><button class="btn primary" type="submit">'+(e.ayat!=null?'Update reading':'Save reading')+'</button></div></form>'+
+    '<div><div class="eyebrow" style="margin-bottom:4px">Last 4 weeks</div><div class="rows">'+hist+'</div></div></section>';
+}
+function readAlert(s){const c=cls(s.classId);if(!c||c.course==='INR')return false;const w1=lastWeek(),w2=addDays(w1,-7);if(s.joined>w2)return false;const bad=w=>!metBoth(rd(s.id,w));return bad(w1)&&bad(w2)}
+function classReading(c,w){
+  const studs=classStudents(c.id);const es=studs.map(s=>rd(s.id,w)).filter(Boolean);
+  return {n:studs.length,logged:es.length,met:es.filter(metBoth).length,ayat:avg(es.map(e=>e.ayat)),pages:avg(es.map(e=>e.pages))};
+}
+function teacherReadingCard(mine){
+  const lw=lastWeek();mine=mine.filter(c=>c.course!=='INR');if(!mine.length)return '';
+  return '<section class="card"><div class="card-h"><div class="eyebrow">Weekly reading</div>'+chip('mute','Week of '+fd(lw))+'</div><div class="rows">'+mine.map(c=>{const r=classReading(c,lw);
+    return '<div class="row"><div><div class="b">'+c.id+'</div><div class="sub small">'+(r.logged?'Logged by '+r.logged+' of '+r.n+' · both targets met by '+r.met+' · average '+r.ayat+' ayat and '+r.pages+' pages':'No entries yet')+'</div></div>'+act('openClass',c.id,'Students')+'</div>'}).join('')+'</div>'+
+    '<p class="sub small">Students log their own reading each week. Targets are '+TG().ayat+' ayat and '+TG().pages+' pages, set by the academic team.</p></section>';
+}
+function readingReport(from,to){
+  const t=TG();const weeks=[];for(let w=weekStart(from);w<=to;w=addDays(w,7))if(addDays(w,6)<TODAY)weeks.push(w);
+  const all=[];
+  const rows=S.classes.filter(c=>c.status==='active'&&c.course!=='INR').map(c=>{const studs=classStudents(c.id);const es=[];studs.forEach(s=>weeks.forEach(w=>{const e=rd(s.id,w);if(e)es.push(e)}));all.push.apply(all,es);
+    const poss=studs.length*weeks.length;
+    return '<tr><th scope="row">'+c.id+'</th><td>'+esc(teacherName(c.teacherId)||'')+'</td><td class="r">'+studs.length+'</td><td class="r">'+(es.length?Math.round(es.length/poss*100)+'%':'No data')+'</td><td class="r">'+(avg(es.map(e=>e.ayat))??'–')+'</td><td class="r">'+(avg(es.map(e=>e.pages))??'–')+'</td><td class="r">'+(es.length?Math.round(es.filter(metBoth).length/es.length*100)+'%':'–')+'</td></tr>'});
+  return '<div class="tiles">'+tile('Weeks in period',weeks.length,'Completed weeks only')+tile('Average ayat',avg(all.map(e=>e.ayat))??'No data','A week · target '+t.ayat)+tile('Average pages',avg(all.map(e=>e.pages))??'No data','A week · target '+t.pages)+tile('Both targets met',all.length?Math.round(all.filter(metBoth).length/all.length*100)+'%':'No data','Of weekly entries')+'</div>'+
+    tbl([['Class'],['Teacher'],['Students',1],['Weeks logged',1],['Average ayat',1],['Average pages',1],['Both targets met',1]],rows)+
+    '<p class="sub small">Weekly reading applies to Basic, Intermediate and Advance, not the Introductory course. Sample reading records are loaded for Mumbai classes only.</p>';
+}
+
+/* ---------- small builders ---------- */
+const tile=(l,v,s,w)=>'<div class="tile"><div class="t-l">'+l+'</div><div class="t-v">'+v+'</div><div class="t-s'+(w?' warn':'')+'">'+(s||'')+'</div></div>';
+const pct=v=>v===null||v===undefined?'No data yet':v+'%';
+const opts=(arr,sel)=>arr.map(o=>'<option value="'+esc(o[0])+'"'+(String(o[0])===String(sel)?' selected':'')+'>'+esc(o[1])+'</option>').join('');
+const act=(name,arg,label,cl)=>'<button type="button" class="'+(cl||'btn')+'" data-act="'+name+'" data-arg="'+esc(arg==null?'':arg)+'">'+label+'</button>';
+function tbl(head,rows){return '<div class="scroll"><table><thead><tr>'+head.map(h=>'<th scope="col"'+(h[1]?' class="r"':'')+'>'+h[0]+'</th>').join('')+'</tr></thead><tbody>'+(rows.join('')||'<tr><td colspan="'+head.length+'" class="sub">Nothing to show.</td></tr>')+'</tbody></table></div>'}
+
+/* ---------- views: super admin ---------- */
+function locRow(l){
+  if(l.live){const m=locMetrics(l.code);return {classes:m.classes,students:m.students,held:Math.round(m.held/m.planned*100),att:m.att,pass:m.pass,calls:m.calls,actions:m.actions,await:m.awaiting,unlogged:m.old}}
+  return l.stat||{classes:0,students:0,held:null,att:null,pass:null,calls:0,actions:0,await:0,unlogged:0};
+}
+function viewSuperHome(){
+  const rows=S.locations.map(l=>({l:l,r:locRow(l)}));
+  const sum=k=>rows.reduce((a,x)=>a+(x.r[k]||0),0);
+  const ready=S.exams.filter(e=>S.questions.some(q=>!q.retired&&q.course===e.course&&q.sem===e.sem&&q.sub===e.sub)).length;
+  return '<div class="head"><div><h1>All locations</h1><div class="sub">'+S.locations.length+' locations · '+sum('classes')+' classes · '+sum('students')+' students</div></div>'+
+    '<div class="btns">'+act('nav','locations','Add location','btn primary')+'</div></div>'+
+    '<section class="tiles" aria-label="Academy performance">'+
+      tile('Locations',S.locations.length,'Each with two responsible persons')+
+      tile('Classes',sum('classes'),'Across all locations')+
+      tile('Students',sum('students'),'Enrolled now')+
+      tile('Classes awaiting a teacher',sum('await'),'Created by coordinators')+
+      tile('Sessions not logged',sum('unlogged'),'Older than 7 days',sum('unlogged')>0)+
+    '</section>'+
+    '<section class="card"><div class="card-h"><h2>Locations side by side</h2><span class="sub small">Mumbai is worked out live from the sample records; the others are fixed sample figures</span></div>'+
+      tbl([['Location'],['Primary responsible'],['Classes',1],['Students',1],['Sessions held',1],['Attendance',1],['Pass rate',1],['Calls, last 4 weeks'],['Open actions',1],['']],
+        rows.map(x=>'<tr><th scope="row">'+esc(x.l.name)+' <span class="sub">'+x.l.code+'</span></th><td>'+esc(x.l.primary)+'</td><td class="r">'+x.r.classes+'</td><td class="r">'+x.r.students+'</td><td class="r">'+pct(x.r.held)+'</td><td class="r">'+pct(x.r.att)+'</td><td class="r">'+pct(x.r.pass)+'</td><td>'+(x.r.calls<3?chip('warnfill',x.r.calls+' of 4 held'):x.r.calls+' of 4 held')+'</td><td class="r">'+x.r.actions+'</td><td>'+act('report',x.l.code,'Report')+'</td></tr>'))+
+    '</section>'+
+    '<div class="cols"><section class="card main"><h2>Academic readiness</h2><div class="rows">'+
+      '<div class="row"><div>Syllabus charts loaded</div><div class="b num">'+Object.keys(S.charts).length+' of 16</div></div>'+
+      '<div class="row"><div>Semester exams with questions</div><div class="b num">'+ready+' of 45</div></div>'+
+      '<div class="row"><div>Questions in the bank</div><div class="b num">'+S.questions.filter(q=>!q.retired).length+'</div></div>'+
+      '<div class="row"><div>Traditions in the library</div><div class="b num">'+S.traditions.length+'</div></div></div>'+
+      '<p class="sub small">These counts come from what the academic team has loaded in this prototype.</p></section>'+
+    '<section class="card side"><h2>Reports and MIS</h2><p class="sub">Predefined reports, or build your own with filters and chosen columns.</p>'+act('nav','reports','Open reports','btn primary')+'</section></div>';
+}
+function viewLocations(){
+  return '<div class="head"><div><h1>Locations</h1><div class="sub">Each location has a short code used in class numbers</div></div></div>'+
+    '<section class="card">'+tbl([['Location'],['Code'],['Primary'],['Secondary'],['Coordinator'],['Weekly call']],
+      S.locations.map(l=>'<tr><th scope="row">'+esc(l.name)+'</th><td>'+esc(l.code)+'</td><td>'+esc(l.primary)+'</td><td>'+esc(l.secondary)+'</td><td>'+esc(l.coordinator)+'</td><td>'+esc(l.callDay)+' · '+esc(l.callTime)+'</td></tr>'))+'</section>'+
+    '<section class="card"><h2>Add a location</h2><form class="form" data-form="locAdd">'+
+      '<div class="field"><label for="la-name">Name</label><input id="la-name" name="name" required></div>'+
+      '<div class="field"><label for="la-code">Short code (3 letters)</label><input id="la-code" name="code" maxlength="3" required></div>'+
+      '<div class="field"><label for="la-pri">Primary responsible</label><input id="la-pri" name="primary" required></div>'+
+      '<div class="field"><label for="la-sec">Secondary responsible</label><input id="la-sec" name="secondary" required></div>'+
+      '<div class="field"><label for="la-co">Coordinator (optional)</label><input id="la-co" name="coordinator"></div>'+
+      '<div class="field"><label for="la-day">Weekly call day</label><select id="la-day" name="callDay">'+opts(DOWL.map(d=>[d,d]),'Monday')+'</select></div>'+
+      '<div class="field"><label for="la-time">Call time</label><input id="la-time" name="callTime" value="8:00 PM"></div>'+
+      '<div class="field"><label for="la-meet">Fixed Meet link</label><input id="la-meet" name="meet" placeholder="Paste the Google Meet link"></div>'+
+      '<button class="btn primary" type="submit">Add location</button></form>'+(S.p.err?'<p class="err">'+esc(S.p.err)+'</p>':'')+'</section>';
+}
+function viewMasters(){
+  return '<div class="head"><div><h1>Master lists</h1><div class="sub">New course types and subjects can be added without development work</div></div></div>'+
+    '<div class="cols"><section class="card main"><h2>Course types</h2>'+
+      tbl([['Course type'],['Code'],['Semesters',1],['Sessions per semester',1]],S.courses.map(c=>'<tr><th scope="row">'+esc(c.name)+'</th><td>'+esc(c.code)+'</td><td class="r">'+c.sems+'</td><td class="r">'+c.weeks+'</td></tr>'))+
+      '<form class="form" data-form="courseAdd"><div class="field"><label for="ca-n">Name</label><input id="ca-n" name="name" required></div>'+
+      '<div class="field"><label for="ca-c">Code</label><input id="ca-c" name="code" maxlength="3" required></div>'+
+      '<div class="field"><label for="ca-s">Semesters</label><input id="ca-s" name="sems" type="number" min="1" max="10" value="5"></div>'+
+      '<div class="field"><label for="ca-w">Sessions per semester</label><input id="ca-w" name="weeks" type="number" min="1" max="60" value="8"></div>'+
+      '<button class="btn primary" type="submit">Add course type</button></form></section>'+
+    '<section class="card side"><h2>Subjects in a one-hour session</h2>'+
+      tbl([['Subject'],['Minutes',1],['Examined']],S.subjects.map(s=>'<tr><th scope="row">'+esc(s.name)+'</th><td class="r">'+s.min+'</td><td>'+(s.exam?'Yes':'No')+'</td></tr>'))+
+      '<form class="form" data-form="subjectAdd"><div class="field"><label for="sa-n">Name</label><input id="sa-n" name="name" required></div>'+
+      '<div class="field"><label for="sa-m">Minutes</label><input id="sa-m" name="min" type="number" min="1" max="60" value="10"></div>'+
+      '<button class="btn primary" type="submit">Add subject</button></form></section></div>';
+}
+function allStats(){return S.students.map(s=>({s:s,c:cls(s.classId),st:stuStats(s)}))}
+function attIn(s,from,to){
+  const ss=classSessions(s.classId).filter(x=>x.held&&x.logged&&x.date>=s.joined&&x.date>=from&&x.date<=to);
+  if(!ss.length)return null;return Math.round(ss.filter(x=>(x.att[s.id]||'a')==='p').length/ss.length*100);
+}
+function viewReports(){
+  const rp=S.p.report||'location';const loc=S.p.loc||'MUM';
+  const from=S.p.from||'2026-09-01';const to=S.p.to||TODAY;const inR=x=>x.date>=from&&x.date<=to;
+  const list=[['location','Location report'],['register','Class register'],['followup','Students at risk or in follow-up'],['unlogged','Sessions not logged'],['results','Semester results'],['reading','Weekly reading'],['custom','Build a custom report']];
+  const dated=rp==='location'||rp==='unlogged'||rp==='custom'||rp==='reading';
+  let body='';
+  if(rp==='location'){
+    const l=S.locations.find(x=>x.code===loc);
+    if(l.live){
+      const cs=S.classes.filter(c=>c.loc===loc);const ids=cs.map(c=>c.id);const ss=S.sessions.filter(x=>ids.includes(x.classId)&&inR(x));
+      let p=0,n=0;ss.filter(x=>x.held&&x.logged).forEach(x=>Object.keys(x.att).forEach(k=>{n++;if(x.att[k]==='p')p++}));
+      const calls=S.calls.filter(inR);
+      body='<div class="tiles">'+tile('Classes',cs.length,'Today')+tile('Students',S.students.filter(s=>ids.includes(s.classId)).length,'Enrolled today')+
+        tile('Sessions held',ss.filter(x=>x.held).length+' of '+ss.length,'In this period')+tile('Not logged',ss.filter(x=>x.held&&!x.logged).length,'In this period')+
+        tile('Attendance',n?Math.round(p/n*100)+'%':'No data','In this period')+tile('Calls held',calls.filter(c=>c.status==='Held').length+' of '+calls.length,'In this period')+'</div>'+
+        tbl([['Class'],['Course'],['Group'],['Teacher'],['Students',1],['Sessions held',1],['Not logged',1],['Attendance',1],['In follow-up',1]],
+        cs.map(c=>{const cx=classSessions(c.id).filter(inR);const fu=classStudents(c.id).filter(s=>stuStats(s).status==='followup').length;
+          return '<tr><th scope="row">'+c.id+'</th><td>'+esc(courseLabel(c))+'</td><td>'+group(c.g)+'</td><td>'+esc(teacherName(c.teacherId)||'Awaiting teacher')+'</td><td class="r">'+classStudents(c.id).length+'</td><td class="r">'+cx.filter(x=>x.held).length+' of '+cx.length+'</td><td class="r">'+cx.filter(x=>x.held&&!x.logged).length+'</td><td class="r">'+pct(classAtt(c.id,from,to))+'</td><td class="r">'+fu+'</td></tr>'}));
+    }else{const r=locRow(l);
+      body='<div class="tiles">'+tile('Classes',r.classes,'')+tile('Students',r.students,'')+tile('Sessions held',pct(r.held),'Of sessions planned')+tile('Attendance',pct(r.att),'')+tile('Pass rate',pct(r.pass),'Published results')+tile('Calls held',r.calls+' of 4','Last 4 weeks')+'</div>'+
+        '<p class="sub">Dated sample records are loaded for Mumbai only, so this location shows fixed summary figures that do not change with the dates.</p>'}
+  }
+  if(rp==='register')body=tbl([['Class'],['Location'],['Course'],['Group'],['Teacher'],['Day and time (India)'],['Students',1]],
+    S.classes.map(c=>'<tr><th scope="row">'+c.id+'</th><td>'+c.loc+'</td><td>'+esc(courseLabel(c))+'</td><td>'+group(c.g)+'</td><td>'+esc(teacherName(c.teacherId)||'Awaiting teacher')+'</td><td>'+DOW[c.day]+' '+ft(c.time)+'</td><td class="r">'+classStudents(c.id).length+'</td></tr>'));
+  if(rp==='followup')body=tbl([['Student'],['Class'],['Status'],['Missed in a row',1],['Attendance',1]],
+    allStats().filter(x=>x.st.status==='risk'||x.st.status==='followup').map(x=>'<tr><th scope="row">'+esc(x.s.name)+'</th><td>'+x.c.id+'</td><td>'+statChip(x.st.status)+'</td><td class="r">'+x.st.miss+'</td><td class="r">'+pct(x.st.pct)+'</td></tr>'));
+  if(rp==='unlogged')body=tbl([['Class'],['Session date'],['Days waiting',1],['Teacher']],
+    S.sessions.filter(x=>x.held&&!x.logged&&inR(x)).map(x=>'<tr><th scope="row">'+x.classId+'</th><td>'+fdl(x.date)+'</td><td class="r">'+daysAgo(x.date)+'</td><td>'+esc(teacherName(cls(x.classId).teacherId))+'</td></tr>'));
+  if(rp==='results'){const rows=[];S.classes.forEach(c=>{for(let sem=1;sem<=c.sem;sem++){const ids=classStudents(c.id).map(s=>s.id);const res=ids.map(id=>semResult(id,c.course,sem));const taken=res.filter(r=>r!=='none').length;if(!taken)continue;
+      const marks=S.results.filter(r=>r.cid===c.id&&r.sem===sem).map(r=>r.pct);const avg=Math.round(marks.reduce((a,b)=>a+b,0)/marks.length);
+      rows.push('<tr><th scope="row">'+c.id+'</th><td>Semester '+sem+'</td><td class="r">'+taken+' of '+ids.length+'</td><td class="r">'+avg+'%</td><td class="r">'+res.filter(r=>r==='pass').length+'</td><td>'+(S.published[c.id+'|'+sem]?chip('ok','Published'):chip('gold','Not published'))+'</td></tr>')}});
+    body=tbl([['Class'],['Semester'],['Took the exams',1],['Average mark',1],['Passed',1],['Status']],rows)}
+  if(rp==='reading')body=readingReport(from,to);
+  if(rp==='custom')body=customReport();
+  return '<div class="head"><div><h1>Reports</h1><div class="sub">Predefined reports and a custom builder, each for a chosen period</div></div></div>'+
+    '<section class="card"><div class="form"><div class="field"><label for="rp-sel">Report</label><select id="rp-sel" data-bind="p.report" data-rerender="1">'+opts(list,rp)+'</select></div>'+
+    (rp==='location'?'<div class="field"><label for="rp-loc">Location</label><select id="rp-loc" data-bind="p.loc" data-rerender="1">'+opts(S.locations.map(l=>[l.code,l.name]),loc)+'</select></div>':'')+
+    '<div class="field"><label for="rp-from">Start date</label><input id="rp-from" type="date" data-bind="p.from" data-rerender="1" value="'+from+'"></div>'+
+    '<div class="field"><label for="rp-to">End date</label><input id="rp-to" type="date" data-bind="p.to" data-rerender="1" value="'+to+'"></div></div>'+
+    '<div class="btns">'+act('range','7','Last 7 days')+act('range','28','Last 4 weeks')+act('range','all','Since 1 Sep')+'</div>'+
+    '<p class="sub small">'+(dated?'Period: '+fd(from)+' to '+fd(to)+'. Sessions, attendance and calls count this period only; student status is as of today.':'This report shows the position as of today. In the full system it will also follow the start and end dates; the sample records here carry no dates for it.')+'</p>'+
+    body+'</section>';
+}
+function customReport(){
+  const f=S.form.cr||(S.form.cr={set:'students',loc:'',course:'',g:'',status:'',cols:{cls:true,status:true,att:true,loc:false,teacher:false,group:false,course:false,students:true,day:true}});
+  const filt='<div class="form">'+
+    '<div class="field"><label for="cr-set">Data</label><select id="cr-set" data-bind="form.cr.set" data-rerender="1">'+opts([['students','Students'],['classes','Classes']],f.set)+'</select></div>'+
+    '<div class="field"><label for="cr-loc">Location</label><select id="cr-loc" data-bind="form.cr.loc" data-rerender="1">'+opts([['','All']].concat(S.locations.filter(l=>S.classes.some(c=>c.loc===l.code)).map(l=>[l.code,l.name])),f.loc)+'</select></div>'+
+    '<div class="field"><label for="cr-co">Course type</label><select id="cr-co" data-bind="form.cr.course" data-rerender="1">'+opts([['','All']].concat(S.courses.map(c=>[c.code,c.name])),f.course)+'</select></div>'+
+    '<div class="field"><label for="cr-g">Group</label><select id="cr-g" data-bind="form.cr.g" data-rerender="1">'+opts([['','All'],['F','Sisters'],['M','Brothers']],f.g)+'</select></div>'+
+    (f.set==='students'?'<div class="field"><label for="cr-st">Status</label><select id="cr-st" data-bind="form.cr.status" data-rerender="1">'+opts([['','All'],['new','New'],['active','Active'],['risk','At risk'],['followup','In follow-up']],f.status)+'</select></div>':'')+'</div>';
+  const colDefs=f.set==='students'?[['cls','Class'],['loc','Location'],['course','Course'],['group','Group'],['status','Status'],['att','Attendance']]:[['loc','Location'],['course','Course'],['group','Group'],['teacher','Teacher'],['day','Day and time'],['students','Students'],['att','Attendance']];
+  const checks='<div><div class="lab">Columns</div><div class="checks">'+colDefs.map(c=>'<label class="check"><input type="checkbox" id="cc-'+c[0]+'" data-bind="form.cr.cols.'+c[0]+'" data-rerender="1"'+(f.cols[c[0]]?' checked':'')+'>'+c[1]+'</label>').join('')+'</div></div>';
+  const on=colDefs.filter(c=>f.cols[c[0]]);
+  const okC=c=>(!f.loc||c.loc===f.loc)&&(!f.course||c.course===f.course)&&(!f.g||c.g===f.g);
+  let rows;
+  if(f.set==='students'){
+    const cell={cls:x=>x.c.id,loc:x=>x.c.loc,course:x=>esc(courseLabel(x.c)),group:x=>group(x.c.g),status:x=>statChip(x.st.status),att:x=>pct(attIn(x.s,S.p.from||'2026-09-01',S.p.to||TODAY))};
+    rows=allStats().filter(x=>okC(x.c)&&(!f.status||x.st.status===f.status)).map(x=>'<tr><th scope="row">'+esc(x.s.name)+'</th>'+on.map(c=>'<td>'+cell[c[0]](x)+'</td>').join('')+'</tr>');
+  }else{
+    const cell={loc:c=>c.loc,course:c=>esc(courseLabel(c)),group:c=>group(c.g),teacher:c=>esc(teacherName(c.teacherId)||'Awaiting teacher'),day:c=>DOW[c.day]+' '+ft(c.time),students:c=>classStudents(c.id).length,att:c=>pct(classAtt(c.id,S.p.from||'2026-09-01',S.p.to||TODAY))};
+    rows=S.classes.filter(okC).map(c=>'<tr><th scope="row">'+c.id+'</th>'+on.map(k=>'<td>'+cell[k[0]](c)+'</td>').join('')+'</tr>');
+  }
+  return filt+checks+'<p class="sub small">'+rows.length+' rows</p>'+tbl([[f.set==='students'?'Student':'Class']].concat(on.map(c=>[c[1]])),rows);
+}
+
+/* ---------- views: academic team ---------- */
+function viewChart(){
+  const co=S.p.course||'BAS';const k=course(co);const sem=Math.min(+(S.p.sem||2),k.sems);const loaded=S.charts[co+'-'+sem];
+  const fake={course:co,sem:sem};
+  return '<div class="head"><div><h1>Standard Syllabus Chart</h1><div class="sub">The fixed weekly plan teachers log each session against</div></div></div>'+
+    '<section class="card"><div class="form"><div class="field"><label for="ch-c">Course type</label><select id="ch-c" data-bind="p.course" data-rerender="1">'+opts(S.courses.map(c=>[c.code,c.name]),co)+'</select></div>'+
+    '<div class="field"><label for="ch-s">Semester</label><select id="ch-s" data-bind="p.sem" data-rerender="1">'+opts(Array.from({length:k.sems},(_,i)=>[i+1,'Semester '+(i+1)]),sem)+'</select></div></div>'+
+    (loaded?tbl([[co==='INR'?'Session':'Week'],['Belief'],['Islamic Laws'],['Ethics']],Array.from({length:k.weeks},(_,i)=>{const l=lesson(fake,i+1);return '<tr><th scope="row">'+(i+1)+'</th><td>'+esc(l.b)+'</td><td>'+esc(l.l)+'</td><td>'+esc(l.e)+'</td></tr>'}))+
+      '<p class="sub small">Bracketed entries stand in for the real chart, which will be loaded from the Excel template once the academy returns it.</p>'
+     :'<p class="empty">This chart is not loaded yet.</p><div class="btns">'+act('chartLoad',co+'-'+sem,'Import from Excel (sample)','btn primary')+'</div>')+'</section>';
+}
+const QTYPE={single:'Single choice',combo:'Statements with combinations',fill:'Fill in the blank',bank:'Fill in the blanks from a word bank',match:'Match the column',ayah:'Arabic verse and translation'};
+const isAr=s=>/[؀-ۿ]/.test(String(s));
+const tx=s=>isAr(s)?'<span class="ar-in" lang="ar" dir="rtl">'+esc(s)+'</span>':esc(s);
+const stmtList=q=>q.stmts&&q.stmts.length?'<ol type="i">'+q.stmts.map(x=>'<li>'+tx(x)+'</li>').join('')+'</ol>':'';
+function qShow(q){
+  if(q.type==='fill')return '<div class="small">Accepted answers: <span class="c">'+q.answers.map(esc).join(', ')+'</span></div>';
+  if(q.type==='match')return '<ol>'+q.left.map((l,i)=>'<li>'+esc(l)+' <span class="sub">matches</span> <span class="c">'+esc(q.right[i])+'</span></li>').join('')+'</ol>';
+  return (q.type==='ayah'?'<div class="ar" lang="ar" dir="rtl">'+esc(q.ar)+'</div>':'')+stmtList(q)+'<ol type="A">'+q.options.map((o,j)=>'<li'+(j===q.correct?' class="c"':'')+'>'+tx(o)+(j===q.correct?' (correct)':'')+'</li>').join('')+'</ol>';
+}
+function qFields(t,q){
+  const v=x=>esc(x==null?'':x);let s='';const choice=t==='single'||t==='ayah'||t==='combo';
+  if(t==='ayah')s+='<div class="field"><label for="qa-ar">Ayat in Arabic</label><textarea id="qa-ar" name="ar" rows="2" dir="rtl" lang="ar" class="ar" required>'+v(q&&q.ar)+'</textarea></div>';
+  const lab=t==='ayah'?'Instruction':t==='fill'?'Sentence, with ____ where the blank goes':t==='match'?'Instruction':'Question';
+  const def=t==='ayah'?'Select the translation of this ayat.':t==='match'?'Match each term to its meaning.':'';
+  s+='<div class="field"><label for="qa-t">'+lab+'</label><textarea id="qa-t" name="text" rows="'+(t==='single'?3:2)+'" required>'+v(q?q.text:def)+'</textarea></div>';
+  if(choice){
+    s+=['A','B','C','D'].map((L,i)=>'<div class="field"><label for="qa-o'+i+'">'+(t==='ayah'?'Translation ':'Option ')+L+'</label><input id="qa-o'+i+'" name="o'+i+'" value="'+v(q&&q.options[i])+'" required></div>').join('')+
+      '<div class="field"><label for="qa-c">Correct answer</label><select id="qa-c" name="correct">'+opts([[0,'A'],[1,'B'],[2,'C'],[3,'D']],q?q.correct:0)+'</select></div>';
+  }
+  if(t==='fill')s+='<div class="field"><label for="qa-a">Accepted answers, separated by commas</label><input id="qa-a" name="answers" value="'+v(q&&q.answers.join(', '))+'" required></div><p class="sub small">Capitals, spaces and apostrophes are ignored when marking, so Maad and Ma\'ad count as the same answer.</p>';
+  if(t==='match')s+=[0,1,2,3].map(i=>'<div class="form"><div class="field"><label for="qa-l'+i+'">Left '+(i+1)+'</label><input id="qa-l'+i+'" name="l'+i+'" value="'+v(q&&q.left[i])+'"'+(i<2?' required':'')+'></div><div class="field"><label for="qa-r'+i+'">Its match</label><input id="qa-r'+i+'" name="r'+i+'" value="'+v(q&&q.right[i])+'"'+(i<2?' required':'')+'></div></div>').join('')+'<p class="sub small">Enter each pair side by side. Students see the right-hand column shuffled.</p>';
+  return s;
+}
+function viewBank(){
+  const f=S.form.qb||(S.form.qb={course:'BAS',sem:2,sub:'b',type:'single',edit:null});
+  const k=course(f.course);if(+f.sem>k.sems)f.sem=1;
+  const list=S.questions.filter(q=>q.course===f.course&&q.sem===+f.sem&&q.sub===f.sub);
+  const ed=f.edit?list.find(q=>q.id===f.edit):null;if(!ed)f.edit=null;
+  const t=ed?ed.type:f.type||'single';
+  return '<div class="head"><div><h1>Question bank</h1><div class="sub">Questions of several types, all marked automatically, stored by course type, semester and subject</div></div>'+
+    '<div class="btns">'+act('importOpen','','Import a question paper')+'</div></div>'+
+    '<div class="cols"><section class="card main"><div class="form">'+
+      '<div class="field"><label for="qb-c">Course type</label><select id="qb-c" data-bind="form.qb.course" data-rerender="1">'+opts(S.courses.map(c=>[c.code,c.name]),f.course)+'</select></div>'+
+      '<div class="field"><label for="qb-s">Semester</label><select id="qb-s" data-bind="form.qb.sem" data-rerender="1">'+opts(Array.from({length:k.sems},(_,i)=>[i+1,'Semester '+(i+1)]),f.sem)+'</select></div>'+
+      '<div class="field"><label for="qb-u">Subject</label><select id="qb-u" data-bind="form.qb.sub" data-rerender="1">'+opts(S.subjects.filter(s=>s.exam).map(s=>[s.key,s.name]),f.sub)+'</select></div></div>'+
+      '<div class="card-h"><h2>'+list.filter(q=>!q.retired).length+' questions</h2></div><div>'+
+      (list.map((q,i)=>'<div class="qa"><div class="b">'+(i+1)+'. '+tx(q.text)+'</div><div class="btns">'+chip('mute',QTYPE[q.type])+(q.retired?chip('warn','Retired'):'')+(ed&&ed.id===q.id?chip('gold','Editing'):'')+'</div>'+qShow(q)+
+        (q.retired?'':'<div class="btns">'+act('qEdit',q.id,'Edit','link')+act('qRetire',q.id,'Retire','link')+'</div>')+'</div>').join('')||'<p class="empty">No questions here yet. Add the first one with Quick add.</p>')+'</div></section>'+
+    '<section class="card side" id="q-form"><h2>'+(ed?'Edit question':'Quick add')+'</h2><p class="sub small">'+(ed?'Changes apply to new exams. Past papers keep the version that was taken.':'Saves to '+esc(k.name)+', Semester '+f.sem+', '+esc(subName(f.sub))+' and keeps the form open for the next question.')+'</p>'+
+      '<div class="field"><label for="qa-type">Question type</label><select id="qa-type" data-bind="form.qb.type" data-rerender="1"'+(ed?' disabled':'')+'>'+opts(Object.keys(QTYPE).filter(x=>x!=='bank'&&(x!=='combo'||t==='combo')).map(x=>[x,QTYPE[x]]),t)+'</select></div>'+
+      '<form data-form="qAdd" style="display:flex;flex-direction:column;gap:12px">'+qFields(t,ed)+
+      '<div class="btns"><button class="btn primary" type="submit">'+(ed?'Save changes':'Save and add another')+'</button>'+(ed?act('qEditCancel','','Cancel'):'')+'</div></form></section></div>';
+}
+function viewExams(){
+  return '<div class="head"><div><h1>Exams</h1><div class="sub">One exam per course type, semester and subject, assembled from the question bank</div></div></div>'+
+    '<section class="card">'+tbl([['Exam'],['Questions',1],['Window'],['Status'],['']],
+      S.exams.map(e=>{const n=S.questions.filter(q=>!q.retired&&q.course===e.course&&q.sem===e.sem&&q.sub===e.sub).length;const taken=S.results.filter(r=>r.course===e.course&&r.sem===e.sem&&r.sub===e.sub).length;
+        return '<tr><th scope="row">'+esc(course(e.course).name)+' · Semester '+e.sem+' · '+esc(subName(e.sub))+'</th><td class="r">'+n+'</td><td>'+fd(e.from)+' to '+fd(e.to)+'</td><td>'+(e.open?chip('ok','Open now')+' <span class="sub small">'+taken+' taken</span>':chip('gold','Scheduled'))+'</td><td>'+act('examToggle',e.id,e.open?'Close window':'Open window now',e.open?'btn':'btn primary')+'</td></tr>'}))+
+      '<p class="sub small">Opening a window here makes the Start exam button appear for students in both Basic Semester 2 classes. Earlier semesters are not loaded in this prototype.</p></section>';
+}
+function viewTraditions(){
+  return '<div class="head"><div><h1>Traditions library</h1><div class="sub">One tradition goes into each absence reminder, in rotation</div></div></div>'+
+    '<div class="cols"><section class="card main"><h2>'+S.traditions.length+' in the library</h2><div class="rows">'+
+      S.traditions.map(t=>'<div class="row"><div><div>'+esc(t.text)+'</div><div class="sub small">'+esc(t.source)+'</div></div></div>').join('')+'</div>'+
+      '<p class="sub small">The two entries above are placeholders. The academic team adds the real traditions, each with its source.</p></section>'+
+    '<section class="card side"><h2>Add a tradition</h2><form data-form="tradAdd" style="display:flex;flex-direction:column;gap:12px">'+
+      '<div class="field"><label for="tr-t">Text</label><textarea id="tr-t" name="text" rows="4" required></textarea></div>'+
+      '<div class="field"><label for="tr-s">Source</label><input id="tr-s" name="source" required></div>'+
+      '<button class="btn primary" type="submit">Add to library</button></form></section></div>';
+}
+
+/* ---------- views: materials and training ---------- */
+function scopes(tid){return S.classes.filter(c=>c.teacherId===tid).map(c=>({course:c.course,sem:c.sem,cid:c.id}))}
+function canSee(t,m){if(t.access==='all'||m.course==='ALL')return true;const sc=scopes(t.id);if(t.access==='course')return sc.some(s=>s.course===m.course);return sc.some(s=>s.course===m.course&&(!m.sem||s.sem===m.sem))}
+function matScope(m){return (m.course==='ALL'?'All courses':course(m.course).name+(m.sem?' · Semester '+m.sem:'')+(m.sub!=='all'?' · '+subName(m.sub):'')+(m.week?' · week '+m.week:''))+(m.pages?' · '+m.pages+' pages':'')}
+function sharesOf(mid){return S.shares.filter(s=>s.mid===mid)}
+function invited(tid,tr){if(tr.course==='ALL')return true;return scopes(tid).some(s=>s.course===tr.course&&(!tr.sem||s.sem===tr.sem||(tr.kind==='Refresher'&&s.sem===tr.sem-1)))}
+function trWhen(tr){return fdl(tr.date)+' · '+ft(tr.time)+' India time'}
+function viewMaterials(){
+  const f=S.form.mf||(S.form.mf={course:'',share:'',type:''});
+  const list=S.materials.filter(m=>(!f.course||m.course===f.course)&&(!f.share||String(m.share)===f.share)&&(!f.type||m.type===f.type));
+  return '<div class="head"><div><h1>Teaching materials</h1><div class="sub">One library for syllabus documents, books for students to read, teacher guides, slides and other material</div></div></div>'+
+    '<div class="cols"><section class="card main"><div class="form">'+
+      '<div class="field"><label for="mf-c">Course type</label><select id="mf-c" data-bind="form.mf.course" data-rerender="1">'+opts([['','All'],['ALL','General (all courses)']].concat(S.courses.map(c=>[c.code,c.name])),f.course)+'</select></div>'+
+      '<div class="field"><label for="mf-y">Type</label><select id="mf-y" data-bind="form.mf.type" data-rerender="1">'+opts([['','All types']].concat(MTYPES.map(x=>[x,x])),f.type)+'</select></div>'+
+      '<div class="field"><label for="mf-s">Who can see it</label><select id="mf-s" data-bind="form.mf.share" data-rerender="1">'+opts([['','Any'],['false','Teachers only'],['true','Shareable with students']],f.share)+'</select></div></div>'+
+      '<div class="rows">'+(list.map(m=>{const sh=sharesOf(m.id);return '<div class="row"><div><div class="b">'+esc(m.title)+'</div><div class="sub small">'+esc(matScope(m))+' · '+esc(m.src)+' · added '+fd(m.date)+'</div><div class="btns" style="margin-top:6px">'+chip('mute',m.type)+(m.share?chip('ok','Shareable with students'):chip('gold','Teachers only'))+(sh.length?chip('mute','Shared with '+sh.length+(sh.length===1?' class':' classes')):'')+'</div></div></div>'}).join('')||'<p class="empty">No material matches these filters.</p>')+'</div></section>'+
+    '<div class="side"><section class="card"><h2>Add material</h2><form data-form="matAdd" style="display:flex;flex-direction:column;gap:12px">'+
+      '<div class="field"><label for="ma-t">Title</label><input id="ma-t" name="title" required></div>'+
+      '<div class="field"><label for="ma-y">Type</label><select id="ma-y" name="type">'+opts(MTYPES.map(x=>[x,x]),'Syllabus')+'</select></div>'+
+      '<div class="form"><div class="field"><label for="ma-c">Course type</label><select id="ma-c" name="course">'+opts([['ALL','All courses']].concat(S.courses.map(c=>[c.code,c.name])),'BAS')+'</select></div>'+
+      '<div class="field"><label for="ma-s">Semester</label><select id="ma-s" name="sem">'+opts([[0,'All']].concat([1,2,3,4,5].map(i=>[i,'Semester '+i])),2)+'</select></div></div>'+
+      '<div class="form"><div class="field"><label for="ma-u">Subject</label><select id="ma-u" name="sub">'+opts([['all','All']].concat(S.subjects.filter(s=>s.exam).map(s=>[s.key,s.name])),'b')+'</select></div>'+
+      '<div class="field"><label for="ma-w">Session (optional)</label><input id="ma-w" name="week" type="number" min="1" max="60"></div></div>'+
+      '<div class="field"><label for="ma-pg">Pages (books only)</label><input id="ma-pg" name="pages" type="number" min="1" inputmode="numeric"></div>'+
+      '<div class="field"><label for="ma-v">Who can see it</label><select id="ma-v" name="share">'+opts([['true','Teachers, and shareable with students'],['false','Teachers only']],'true')+'</select></div>'+
+      '<div class="field"><label for="ma-f">Upload a file</label><input id="ma-f" name="file" type="file"></div>'+
+      '<div class="field"><label for="ma-l">Or paste a link</label><input id="ma-l" name="link" placeholder="Google Drive or YouTube link"></div>'+
+      '<p class="sub small">The prototype keeps only the file name.</p><button class="btn primary" type="submit">Add to library</button></form></section>'+
+    '<section class="card"><h2>Weekly reading targets</h2><p class="sub small">What each student is expected to log every week. Changes apply from the next week.</p><div class="form">'+
+      '<div class="field"><label for="tg-a">Ayat a week</label><input id="tg-a" type="number" min="0" inputmode="numeric" data-bind="targets.ayat" value="'+esc(S.targets.ayat)+'"></div>'+
+      '<div class="field"><label for="tg-p">Pages a week</label><input id="tg-p" type="number" min="0" inputmode="numeric" data-bind="targets.pages" value="'+esc(S.targets.pages)+'"></div></div></section>'+
+    '<section class="card"><h2>Teacher access levels</h2><p class="sub small">Own classes: material for the courses and semesters they teach. Course type: every semester of those courses. All material: the whole library.</p>'+
+      tbl([['Teacher'],['Classes'],['Access']],S.teachers.map((t,i)=>'<tr><th scope="row">'+esc(t.name)+'</th><td>'+(scopes(t.id).map(s=>s.cid).join(', ')||'None yet')+'</td><td><label class="sub small" for="acc-'+t.id+'" style="position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)">Access for '+esc(t.name)+'</label><select id="acc-'+t.id+'" data-bind="teachers.'+i+'.access" data-rerender="1" style="min-height:40px;border:1px solid var(--field);border-radius:8px;background:var(--surface);padding:0 8px">'+opts(Object.keys(ACCESS).map(k=>[k,ACCESS[k]]),t.access)+'</select></td></tr>'))+'</section></div></div>';
+}
+function viewTraining(){
+  const up=S.trainings.filter(t=>t.date>=TODAY).sort((a,b)=>a.date<b.date?-1:1);const past=S.trainings.filter(t=>t.date<TODAY);
+  const row=tr=>{const inv=S.teachers.filter(t=>invited(t.id,tr));const yes=inv.filter(t=>tr.rsvp[t.id]==='yes').length;const no=inv.filter(t=>tr.rsvp[t.id]==='no').length;
+    return '<div class="row"><div><div class="b">'+esc(tr.title)+'</div><div class="sub small">'+trWhen(tr)+' · '+esc(tr.mode)+' · '+esc(tr.facilitator)+'</div><div class="btns" style="margin-top:6px">'+chip('mute',tr.kind)+(tr.req?chip('gold','Required'):chip('mute','Optional'))+chip('mute',tr.course==='ALL'?'All teachers':course(tr.course).name+' · Semester '+tr.sem)+'</div>'+
+      '<div class="small" style="margin-top:6px">'+(tr.attended?'Attended: '+Object.values(tr.attended).filter(Boolean).length+' of '+inv.length:inv.length+' invited · '+yes+' attending · '+no+' not attending · '+(inv.length-yes-no)+' not replied')+'</div></div></div>'};
+  return '<div class="head"><div><h1>Teacher training</h1><div class="sub">Programmes and refreshers, with invitations, replies and attendance</div></div></div>'+
+    '<div class="cols"><div class="main"><section class="card"><h2>Coming up</h2><div class="rows">'+(up.map(row).join('')||'<p class="empty">Nothing scheduled.</p>')+'</div></section>'+
+      '<section class="card"><h2>Held</h2><div class="rows">'+past.map(row).join('')+'</div></section>'+
+      '<p class="sub small">Refreshers go automatically to teachers whose classes reach that topic within three weeks, worked out from the Standard Syllabus Chart.</p></div>'+
+    '<section class="card side"><h2>Schedule training</h2><form data-form="trainAdd" style="display:flex;flex-direction:column;gap:12px">'+
+      '<div class="field"><label for="tr-ti">Title</label><input id="tr-ti" name="title" required></div>'+
+      '<div class="field"><label for="tr-k">Kind</label><select id="tr-k" name="kind">'+opts([['Programme','Training programme'],['Refresher','Refresher on a topic']],'Programme')+'</select></div>'+
+      '<div class="form"><div class="field"><label for="tr-c">For teachers of</label><select id="tr-c" name="course">'+opts([['ALL','All teachers']].concat(S.courses.map(c=>[c.code,c.name])),'ALL')+'</select></div>'+
+      '<div class="field"><label for="tr-s">Semester</label><select id="tr-s" name="sem">'+opts([[0,'All']].concat([1,2,3,4,5].map(i=>[i,'Semester '+i])),0)+'</select></div></div>'+
+      '<div class="form"><div class="field"><label for="tr-d">Date</label><input id="tr-d" name="date" type="date" value="'+addDays(TODAY,14)+'" required></div>'+
+      '<div class="field"><label for="tr-t">Time (India)</label><input id="tr-t" name="time" type="time" value="11:00" required></div></div>'+
+      '<div class="field"><label for="tr-f">Facilitator</label><input id="tr-f" name="facilitator" value="Sr. Tahera"></div>'+
+      '<div class="field"><label for="tr-m">Meet link or venue</label><input id="tr-m" name="mode" placeholder="Paste the Google Meet link"></div>'+
+      '<label class="check"><input type="checkbox" name="req" id="tr-r">Attendance is required</label>'+
+      '<button class="btn primary" type="submit">Schedule and invite</button></form></section></div>';
+}
+function teacherMaterialsCard(){
+  const t=S.teachers.find(x=>x.id==='t1');const list=S.materials.filter(m=>canSee(t,m));
+  return '<section class="card"><div class="card-h"><div class="eyebrow">Materials</div>'+chip('mute','Access: '+ACCESS[t.access])+'</div><div class="rows">'+
+    list.map(m=>{const sh=sharesOf(m.id).filter(s=>scopes('t1').some(x=>x.cid===s.cid));
+      return '<div class="row"><div><div class="b">'+esc(m.title)+'</div><div class="sub small">'+esc(matScope(m))+'</div>'+
+        (sh.length?'<div class="small" style="color:var(--ok-ink)">Shared with '+sh.map(s=>s.cid+' on '+fd(s.date)).join(', ')+'</div>':'')+'</div>'+
+        '<div class="btns">'+act('toast','Opens '+m.src,'Open')+(!m.share?chip('gold','Teachers only'):scopes('t1').some(c=>m.course==='ALL'||(c.course===m.course&&(!m.sem||c.sem===m.sem)))?act('shareOpen',m.id,'Share with class','btn primary'):chip('mute','Not for your current classes'))+'</div></div>'}).join('')+'</div></section>';
+}
+function lessonMaterial(c,week){
+  const t=S.teachers.find(x=>x.id==='t1');const ms=S.materials.filter(m=>m.course===c.course&&m.sem===c.sem&&m.week===week&&canSee(t,m));
+  return ms.length?'<section class="card"><div class="eyebrow">Material for this lesson</div><div class="rows">'+ms.map(m=>'<div class="row"><div><div class="b">'+esc(m.title)+'</div></div>'+act('shareOpen',m.id,'Share with class','btn primary')+'</div>').join('')+'</div></section>':'';
+}
+function teacherTrainingCard(){
+  const list=S.trainings.filter(tr=>tr.date>=TODAY&&invited('t1',tr)).sort((a,b)=>a.date<b.date?-1:1);const done=S.trainings.filter(tr=>tr.attended&&tr.attended.t1);
+  return '<section class="card"><div class="eyebrow">Training</div><div class="rows">'+(list.map(tr=>{const r=tr.rsvp.t1;
+    return '<div class="row"><div><div class="b">'+esc(tr.title)+'</div><div class="sub small">'+trWhen(tr)+' · '+esc(tr.facilitator)+'</div><div class="btns" style="margin-top:6px">'+(tr.req?chip('gold','Required'):chip('mute','Optional'))+(r==='yes'?chip('ok','You are attending'):r==='no'?chip('warn','Not attending'):'')+'</div></div>'+
+      '<div class="btns">'+(r==='yes'?act('toast','Opens the training Meet link','Join'):act('rsvp',tr.id+'|yes','Attending','btn primary'))+(r!=='no'?act('rsvp',tr.id+'|no',"Can't attend"):'')+'</div></div>'}).join('')||'<p class="empty">No training scheduled for you.</p>')+'</div>'+
+    (done.length?'<p class="sub small">Completed: '+done.map(d=>esc(d.title)+' ('+fd(d.date)+')').join(', ')+'</p>':'')+'</section>';
+}
+function studentMaterialsCard(c){
+  const sh=S.shares.filter(s=>s.cid===c.id).sort((a,b)=>a.date<b.date?1:-1);
+  const item=s=>{const m=S.materials.find(x=>x.id===s.mid);const book=m.type==='Book';
+    const read=book?S.reading.filter(r=>r.sid==='zainab'&&r.book===m.id).reduce((t,r)=>t+r.pages,0):0;
+    return '<div class="row"><div><div class="b">'+esc(m.title)+'</div><div class="sub small">'+esc(m.type)+(book?' · '+m.pages+' pages':'')+' · shared by '+esc(s.by)+' on '+fd(s.date)+'</div>'+
+      (book?'<div class="small">You have logged '+Math.min(read,m.pages)+' of '+m.pages+' pages</div><div class="meter" aria-hidden="true"><i style="width:'+Math.min(100,Math.round(read/m.pages*100))+'%"></i></div>':'')+'</div><div class="btns">'+act('toast','Opens '+m.src+' in the reader',book?'Read':'Open')+(book?act('toast','Downloads '+m.src,'Download'):'')+'</div></div>'};
+  const books=sh.filter(s=>S.materials.find(x=>x.id===s.mid).type==='Book');const rest=sh.filter(s=>S.materials.find(x=>x.id===s.mid).type!=='Book');
+  return '<section class="card"><div class="eyebrow">Books to read</div><div class="rows">'+(books.map(item).join('')||'<p class="empty">No books shared yet.</p>')+'</div></section>'+
+    '<section class="card"><div class="eyebrow">Syllabus and materials</div><div class="rows">'+(rest.map(item).join('')||'<p class="empty">Your teacher has not shared anything yet.</p>')+'</div></section>';
+}
+
+
+/* ---------- views: location admin and coordinator ---------- */
+function classesTable(code,canOpen){
+  return tbl([['Class'],['Course and time'],['Teacher'],['Students',1],['Attendance',1],['Syllabus chart']],
+    S.classes.filter(c=>c.loc===code).map(c=>{const w=weeksDone(c.id);
+      return '<tr><th scope="row">'+(canOpen?act('openClass',c.id,c.id,'link'):c.id)+'<div class="sub small" style="font-weight:500">'+group(c.g)+'</div></th><td>'+esc(courseLabel(c))+'<div class="sub small">'+DOW[c.day]+' '+ft(c.time)+'</div></td><td>'+(c.teacherId?esc(teacherName(c.teacherId)):chip('gold','Awaiting teacher'))+'</td><td class="r">'+classStudents(c.id).length+'</td><td class="r">'+pct(classAtt(c.id))+'</td><td>'+(w?weekLabel(c,w):'Not started')+'</td></tr>'}));
+}
+function actionRows(filter,canClose){
+  const list=S.actions.filter(a=>!a.done&&(!filter||a.owner===filter));
+  return list.map(a=>{const late=a.due<TODAY;return '<div class="row"><div><div class="b">'+esc(a.text)+'</div><div class="small '+(late?'warn-t':'sub')+'">'+esc(a.owner)+' · due '+fd(a.due)+(late?' · overdue'+(a.rem?', '+a.rem+' reminders sent':''):'')+'</div></div>'+(canClose?act('closeAction',a.id,'Mark done'):'')+'</div>'}).join('')||'<p class="empty">No open action items.</p>';
+}
+function viewLocHome(){
+  const m=locMetrics('MUM');const pend=pendingResults('MUM');const await_=S.classes.filter(c=>c.loc==='MUM'&&c.status==='awaiting');
+  const attn=await_.map(c=>'<div class="row"><div><div class="b">'+c.id+' is awaiting a teacher</div><div class="sub small">Created by '+esc(c.createdBy||'the coordinator')+(c.createdOn?' on '+fd(c.createdOn):'')+' · '+esc(courseLabel(c))+' · '+group(c.g)+' · '+DOW[c.day]+' '+ft(c.time)+'</div></div>'+act('assignOpen',c.id,'Assign teacher','btn primary')+'</div>')
+    .concat(m.unlogged.sort((a,b)=>a.date<b.date?-1:1).map(x=>{const d=daysAgo(x.date);return '<div class="row"><div><div class="b">'+x.classId+' · session not logged for '+d+' days</div><div class="small '+(d>7?'warn-t':'sub')+'">'+fdl(x.date)+' · reminders sent to the teacher and the class assistant</div></div><div class="btns">'+act('remind',x.id,'Remind again')+act('logOpen',x.id,'Log it for them')+'</div></div>'}))
+    .concat(pend.map(p=>'<div class="row"><div><div class="b">'+p.c.id+' · Semester '+p.sem+' results to review</div><div class="sub small">'+p.taken+' of '+p.total+' students have exam marks</div></div>'+act('marks',p.c.id+'|'+p.sem,'Review and publish')+'</div>'));
+  return '<div class="head"><div><h1>Mumbai</h1><div class="sub">'+m.classes+' classes · '+m.students+' students · coordinator Sr. Sabiha</div></div><div class="btns">'+act('classNew','','Create class','btn primary')+'</div></div>'+
+    '<section class="tiles" aria-label="Performance">'+
+      tile('Sessions held',m.held+' of '+m.planned,(m.planned-m.held)+' cancelled')+
+      tile('Attendance',pct(m.att),'Last 4 weeks')+
+      tile('Sessions not logged',m.unlogged.length,m.old?m.old+' older than 7 days':'None older than 7 days',m.old>0)+
+      tile('Active students',(m.students-m.fu)+' of '+m.students,m.risk+' at risk · '+m.fu+' in follow-up',m.fu>0)+
+      tile('Coordination calls',m.calls+' of 4','Held in the last 4 weeks')+'</section>'+
+    '<div class="cols"><div class="main"><section class="card"><h2>Needs your attention</h2><div class="rows">'+(attn.join('')||'<p class="empty">Nothing is waiting for you.</p>')+'</div></section>'+
+      '<section class="card"><div class="card-h"><h2>Classes</h2></div>'+classesTable('MUM',true)+'</section></div>'+
+    '<div class="side">'+coordCard()+'<section class="card"><div class="card-h"><h2>Open action items</h2>'+(S.actions.some(a=>!a.done&&a.due<TODAY)?chip('warn',S.actions.filter(a=>!a.done&&a.due<TODAY).length+' overdue'):'')+'</div><div class="rows">'+actionRows('',true)+'</div></section></div></div>';
+}
+function coordCard(){
+  return '<section class="card"><h2>Weekly coordination</h2><div><div class="b">Next call: '+fdl(S.nextCall)+' · 8:00 PM</div><div class="sub small">Every Monday · fixed Meet link · notes typed in after the call</div></div>'+
+    '<div class="btns">'+act('toast','Opens the fixed Google Meet link for this location','Join Meet','btn primary')+act('callOpen','','Record call')+'</div>'+
+    '<div class="lab">Last four weeks</div><div class="btns">'+S.calls.slice(-4).map(c=>chip(c.status==='Held'?'ok':c.status==='Missed'?'warnfill':'gold',fd(c.date).slice(4)+' · '+c.status)).join('')+'</div></section>';
+}
+function viewClasses(){
+  const can=S.role==='locadmin';
+  return '<div class="head"><div><h1>Classes in Mumbai</h1><div class="sub">'+(can?'You can create classes and assign teachers':'You can add and edit classes; the primary or secondary responsible person assigns the teacher')+'</div></div><div class="btns">'+act('classNew','','Create class','btn primary')+'</div></div>'+
+    '<section class="card">'+classesTable('MUM',true)+'</section>';
+}
+function viewStudents(){
+  const f=S.p.status||'';const list=allStats().filter(x=>x.c.loc==='MUM'&&(!f||x.st.status===f));
+  return '<div class="head"><div><h1>Students in Mumbai</h1><div class="sub">Status is worked out from attendance; nobody is ever marked inactive</div></div></div>'+
+    '<section class="card"><div class="form"><div class="field" style="max-width:260px"><label for="st-f">Status</label><select id="st-f" data-bind="p.status" data-rerender="1">'+opts([['','All'],['new','New'],['active','Active'],['risk','At risk'],['followup','In follow-up']],f)+'</select></div><p class="sub small">'+list.length+' students</p></div>'+
+    tbl([['Student'],['Class'],['Status'],['Missed in a row',1],['Attendance',1],['']],list.map(x=>'<tr><th scope="row">'+esc(x.s.name)+'</th><td>'+x.c.id+'</td><td>'+statChip(x.st.status)+'</td><td class="r">'+x.st.miss+'</td><td class="r">'+pct(x.st.pct)+'</td><td>'+(x.st.status==='risk'||x.st.status==='followup'?act('reminder',x.s.id,'Preview reminder'):'')+'</td></tr>'))+'</section>';
+}
+function viewCoord(){
+  return '<div class="head"><div><h1>Coordination</h1><div class="sub">One call a week for this location, with action items followed up until closed</div></div></div>'+
+    '<div class="cols"><div class="main">'+coordCard()+'<section class="card"><h2>Open action items</h2><div class="rows">'+actionRows('',true)+'</div></section></div>'+
+    '<section class="card side"><h2>Add an action item</h2><form data-form="actionAdd" style="display:flex;flex-direction:column;gap:12px">'+
+      '<div class="field"><label for="ai-t">What needs doing</label><input id="ai-t" name="text" required></div>'+
+      '<div class="field"><label for="ai-o">Owner</label><select id="ai-o" name="owner">'+opts([['Br. Jafar','Br. Jafar (primary)'],['Br. Kazim','Br. Kazim (secondary)'],['Sr. Sabiha','Sr. Sabiha (coordinator)']],'Br. Jafar')+'</select></div>'+
+      '<div class="field"><label for="ai-d">Due date</label><input id="ai-d" name="due" type="date" value="'+addDays(TODAY,7)+'"></div>'+
+      '<button class="btn primary" type="submit">Add action item</button></form></section></div>';
+}
+function viewCoordHome(){
+  const await_=S.classes.filter(c=>c.loc==='MUM'&&c.status==='awaiting');
+  return '<div class="head"><div><h1>Mumbai</h1><div class="sub">Coordinator view</div></div><div class="btns">'+act('classNew','','Create class','btn primary')+'</div></div>'+
+    '<div class="cols"><div class="main"><section class="card"><div class="card-h"><h2>Registrations awaiting a class</h2>'+chip('gold',S.regs.length+' waiting')+'</div><div class="rows">'+
+      (S.regs.map(r=>'<div class="row"><div><div class="b">'+esc(r.name)+'</div><div class="sub small">'+group(r.g)+' · wants '+esc(course(r.course).name)+' · lives in '+esc(r.city)+'</div></div>'+act('allocOpen',r.id,'Allocate a class','btn primary')+'</div>').join('')||'<p class="empty">No registrations are waiting.</p>')+'</div></section>'+
+      '<section class="card"><h2>Classes awaiting a teacher</h2><div class="rows">'+(await_.map(c=>'<div class="row"><div><div class="b">'+c.id+'</div><div class="sub small">'+esc(courseLabel(c))+' · '+group(c.g)+' · '+DOW[c.day]+' '+ft(c.time)+' · waiting for the primary or secondary responsible person</div></div></div>').join('')||'<p class="empty">Every class has a teacher.</p>')+'</div></section></div>'+
+    '<div class="side"><section class="card"><h2>My action items</h2><div class="rows">'+actionRows('Sr. Sabiha',true)+'</div></section></div></div>';
+}
+
+/* ---------- views: class detail, marksheet, session log ---------- */
+function viewClass(){
+  const c=cls(S.p.cid);const studs=classStudents(c.id);const ss=classSessions(c.id);const canLog=S.role==='locadmin'||S.role==='teacher';
+  const sems=[];for(let s=1;s<=c.sem;s++)if(studs.some(x=>semResult(x.id,c.course,s)!=='none'))sems.push(s);
+  return '<div>'+act('back','','Back','link')+'</div><div class="head"><div><h1>'+c.id+'</h1><div class="sub">'+esc(courseLabel(c))+' · '+esc(topicOf(c))+' · '+group(c.g)+' · '+DOW[c.day]+' '+ft(c.time)+' India time</div></div>'+
+    '<div class="btns">'+(c.status==='awaiting'&&S.role==='locadmin'?act('assignOpen',c.id,'Assign teacher','btn primary'):'')+sems.map(s=>act('marks',c.id+'|'+s,'Semester '+s+' marksheet')).join('')+'</div></div>'+
+    '<section class="tiles">'+tile('Teacher',esc(teacherName(c.teacherId)||'Awaiting'),c.assistantId?'Assistant: '+esc(stu(c.assistantId).name):'No class assistant yet')+tile('Students',studs.length,'')+tile('Attendance',pct(classAtt(c.id)),'This semester')+tile('Syllabus chart',weeksDone(c.id)?weekLabel(c,weeksDone(c.id)):'Not started','')+'</section>'+
+    '<div class="cols"><section class="card main"><h2>Students</h2>'+(c.course==='INR'?tbl([['Student'],['Status'],['Missed in a row',1],['Attendance',1]],studs.map(s=>{const st=stuStats(s);return '<tr><th scope="row">'+esc(s.name)+'</th><td>'+statChip(st.status)+'</td><td class="r">'+st.miss+'</td><td class="r">'+pct(st.pct)+'</td></tr>'})):tbl([['Student'],['Status'],['Missed in a row',1],['Attendance',1],['Ayat last week',1],['Pages last week',1]],studs.map(s=>{const st=stuStats(s);const e=rd(s.id,lastWeek());const tg=TG();return '<tr><th scope="row">'+esc(s.name)+(readAlert(s)?' '+chip('gold','Reading alert'):'')+'</th><td>'+statChip(st.status)+'</td><td class="r">'+st.miss+'</td><td class="r">'+pct(st.pct)+'</td><td class="r'+(e&&e.ayat<tg.ayat?' warn-t':'')+'">'+(e?e.ayat:'<span class="sub">Not logged</span>')+'</td><td class="r'+(e&&e.pages<tg.pages?' warn-t':'')+'">'+(e?e.pages:'<span class="sub">Not logged</span>')+'</td></tr>'})))+'</section>'+
+    '<section class="card side"><h2>Sessions</h2><div class="rows">'+(ss.slice().reverse().map(x=>{const n=Object.keys(x.att).length;const p=Object.keys(x.att).filter(k=>x.att[k]==='p').length;
+      return '<div class="row"><div><div class="b">'+fd(x.date)+(x.week?' · '+(c.course==='INR'?'Session ':'Week ')+x.week:'')+'</div><div class="sub small">'+(!x.held?'Cancelled: '+esc(x.reason||'no reason given'):x.logged?p+' of '+n+' present · logged by '+esc(x.loggedBy):'Not logged yet')+'</div></div>'+(x.held&&!x.logged?(canLog?act('logOpen',x.id,'Log now','btn primary'):chip('warn','Not logged')):!x.held?chip('mute','Cancelled'):chip('ok','Logged'))+'</div>'}).join('')||'<p class="empty">No sessions yet.</p>')+'</div></section></div>';
+}
+function viewMarks(){
+  const c=cls(S.p.cid);const sem=S.p.sem;const key=c.id+'|'+sem;const pub=!!S.published[key];const studs=classStudents(c.id);
+  const cell=v=>v===null?'<td class="r sub">Not taken</td>':'<td class="r">'+v+'% '+(v>=50?chip('ok','Pass'):chip('warn','Fail'))+'</td>';
+  const lab={pass:chip('ok','Passed'),fail:chip('warn','Re-exam due'),incomplete:chip('gold','Incomplete'),none:chip('mute','No marks')};
+  return '<div>'+act('back','','Back','link')+'</div><div class="head"><div><h1>'+c.id+' · Semester '+sem+' marksheet</h1><div class="sub">Pass mark is 50% in each subject; the best attempt counts</div></div>'+
+    '<div class="btns">'+(pub?chip('ok','Published to students'):S.role==='locadmin'?act('publish',key,'Publish results','btn primary'):chip('gold','Not published yet'))+'</div></div>'+
+    '<section class="card">'+tbl([['Student'],['Belief',1],['Islamic Laws',1],['Ethics',1],['Semester result']],studs.map(s=>'<tr><th scope="row">'+esc(s.name)+'</th>'+['b','l','e'].map(k=>cell(best(s.id,c.course,sem,k))).join('')+'<td>'+lab[semResult(s.id,c.course,sem)]+'</td></tr>'))+
+    (pub?'':'<p class="sub small">Students see nothing until results are published. Publishing also issues the semester certificate to everyone who passed all three subjects.</p>')+'</section>';
+}
+function viewLog(){
+  const d=S.draft;const x=S.sessions.find(s=>s.id===d.sid);const c=cls(x.classId);const studs=classStudents(c.id).filter(s=>s.joined<=x.date);
+  const l=lesson(c,x.week||weeksDone(c.id));const who=S.role==='teacher'?'Sr. Maryam, teacher':S.role==='student'?'Zainab H., class assistant':'Br. Jafar, on behalf of the teacher';
+  const counts={p:0,a:0,e:0};studs.forEach(s=>counts[d.att[s.id]||'p']++);
+  return '<div>'+act('back','','Back','link')+'</div><div><h1>Log session</h1><div class="sub">'+c.id+' · '+esc(courseLabel(c))+' · '+(c.course==='INR'?'Session ':'Week ')+x.week+'</div><div class="sub">'+fdl(x.date)+'</div></div>'+
+    '<section class="card"><div class="eyebrow">Was the class held?</div><div class="seg">'+
+      '<button type="button" class="pick'+(d.held?' on':'')+'" aria-pressed="'+d.held+'" data-act="logHeld" data-arg="1">Held</button>'+
+      '<button type="button" class="pick'+(!d.held?' on a':'')+'" aria-pressed="'+!d.held+'" data-act="logHeld" data-arg="0">Cancelled</button></div>'+
+      (!d.held?'<div class="field"><label for="lg-r">Reason</label><input id="lg-r" data-bind="draft.reason" value="'+esc(d.reason)+'" placeholder="For example: teacher unwell"></div>':'')+'</section>'+
+    (d.held?'<section class="card"><div class="field"><label for="lg-v" class="eyebrow">Last Quran verse reached</label><input id="lg-v" data-bind="draft.verse" value="'+esc(d.verse)+'"></div><div class="sub small">The last session ended at '+verseRef(versesBefore(c,x.week))+'</div></section>'+
+      '<section class="card"><div class="eyebrow">Covered from the syllabus chart</div>'+
+        [['b','Belief',l.b],['l','Islamic Laws',l.l],['e','Ethics',l.e]].map(k=>'<label class="check"><input type="checkbox" id="lg-c'+k[0]+'" data-bind="draft.covered.'+k[0]+'"'+(d.covered[k[0]]?' checked':'')+'><span><span class="b">'+k[1]+'</span><br><span class="sub small">'+esc(k[2])+'</span></span></label>').join('')+'</section>'+
+      '<section class="card"><div class="card-h"><div class="eyebrow">Attendance</div><div class="b small">'+counts.p+' of '+studs.length+' present'+(counts.e?' · '+counts.e+' excused':'')+'</div></div><div class="sub small">Everyone starts as present. Mark anyone absent or excused.</div><div>'+
+        studs.map(s=>{const v=d.att[s.id]||'p';return '<div class="att"><div class="nm">'+esc(s.name)+'</div><div class="three">'+[['p','Present'],['a','Absent'],['e','Excused']].map(o=>'<button type="button" class="pick'+(v===o[0]?' on '+o[0]:'')+'" aria-pressed="'+(v===o[0])+'" aria-label="'+esc(s.name)+' '+o[1].toLowerCase()+'" data-act="logAtt" data-arg="'+s.id+'|'+o[0]+'">'+o[1]+'</button>').join('')+'</div></div>'}).join('')+'</div></section>':'')+
+    '<section class="card"><div class="field"><label for="lg-n" class="eyebrow">Note (optional)</label><textarea id="lg-n" rows="2" data-bind="draft.note">'+esc(d.note)+'</textarea></div></section>'+
+    '<div>'+act('logSave','','Save session','btn primary wide')+'<p class="sub small" style="text-align:center;margin-top:8px">Logging as '+who+'</p></div>';
+}
+
+/* ---------- views: teacher ---------- */
+function nextCard(c,off,place,extra){
+  const d=nextDate(c);const w=whenFor(c,d,off);
+  return '<section class="card"><div class="eyebrow">Next class</div><div><div class="b" style="font-size:20px">'+fdl(w.date)+' · '+w.time+'</div><div class="sub small">Your time ('+place+')</div></div>'+extra+
+    (c.id==='MUM-BAS-003'?'<a class="btn primary wide" href="https://meet.google.com/xvw-xhch-xdc" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none">Join Meet</a><div class="sub small">Live test link from Sr. Maryam\'s own Google account</div>':act('toast','Opens the class Google Meet link','Join Meet','btn primary wide'))+'</section>';
+}
+function lessonCard(c,week,title){
+  const k=course(c.course);if(week>k.weeks)return '<section class="card"><div class="eyebrow">'+title+'</div><p>All '+k.weeks+' sessions are complete. The next step is the exam.</p></section>';
+  const l=lesson(c,week);
+  return '<section class="card"><div class="eyebrow">'+title+'</div><div class="lesson">'+
+    '<div class="min">5 min</div><div><div class="b">Quran recitation</div><div class="sub small">'+esc(l.q)+'</div></div>'+
+    '<div class="min">30 min</div><div><div class="b">Belief</div><div class="sub small">'+esc(l.b)+'</div></div>'+
+    '<div class="min">15 min</div><div><div class="b">Islamic Laws</div><div class="sub small">'+esc(l.l)+'</div></div>'+
+    '<div class="min">10 min</div><div><div class="b">Ethics</div><div class="sub small">'+esc(l.e)+'</div></div></div></section>';
+}
+function teacherData(){
+  const mine=S.classes.filter(c=>c.teacherId==='t1');const next=mine.slice().sort((a,b)=>nextDate(a)<nextDate(b)?-1:1)[0];
+  const tolog=S.sessions.filter(x=>x.held&&!x.logged&&mine.some(c=>c.id===x.classId));
+  const attn=[];mine.forEach(c=>classStudents(c.id).forEach(s=>{const st=stuStats(s);
+    if(st.status==='risk')attn.push('<div class="row"><div><div class="b">'+esc(s.name)+'</div><div class="small warn-t">Absent '+st.miss+' sessions running · '+c.id+'</div></div></div>');
+    if(st.status==='followup')attn.push('<div class="row"><div><div class="b">'+esc(s.name)+'</div><div class="small warn-t">Absent '+st.miss+' sessions running · escalated to the location admins · '+c.id+'</div></div></div>');
+    for(let sem=1;sem<=c.sem;sem++)if(S.published[c.id+'|'+sem]&&semResult(s.id,c.course,sem)==='fail'){const f=['b','l','e'].filter(k=>best(s.id,c.course,sem,k)<50).map(subName).join(', ');attn.push('<div class="row"><div><div class="b">'+esc(s.name)+'</div><div class="small gold-t">Re-exam due: '+esc(f)+', Semester '+sem+' · '+c.id+'</div></div></div>')}}));
+  mine.forEach(c=>{const list=classStudents(c.id).filter(s=>{const st=stuStats(s).status;return st!=='risk'&&st!=='followup'&&readAlert(s)});
+    if(list.length)attn.push('<div class="row"><div><div class="b">Reading: '+list.length+(list.length===1?' student':' students')+' below target or not logged for 2 weeks</div><div class="small gold-t">'+list.map(s=>esc(s.name)).join(', ')+' · '+c.id+'</div></div>'+act('openClass',c.id,'See figures')+'</div>')});
+  return {mine,next,tolog,attn};
+}
+const pageHead=(title,sub)=>'<div><h1>'+title+'</h1>'+(sub?'<div class="sub">'+sub+'</div>':'')+'</div>';
+function viewTeacherHome(){
+  const d=teacherData();const next=d.next;
+  const req=S.trainings.filter(tr=>tr.req&&tr.date>=TODAY&&invited('t1',tr)&&tr.rsvp.t1!=='yes').sort((a,b)=>a.date<b.date?-1:1)[0];
+  return '<div><div class="sub">Salaamun alaykum</div><h1>Sr. Maryam</h1></div>'+
+    (req?'<section class="card" style="background:var(--gold-tint);border-color:var(--gold-ink)"><div class="eyebrow" style="color:var(--gold-ink)">Required training</div><div class="row" style="border-top:0;padding:0"><div><div class="b">'+esc(req.title)+'</div><div class="small gold-t">'+trWhen(req)+' · not replied yet</div></div>'+act('nav','training','Open Training','btn primary')+'</div></section>':'')+
+    nextCard(next,5.5,'India','<div class="btns">'+chip('ok',next.id)+chip('ok',courseLabel(next)+' · '+group(next.g))+'</div><div>'+esc(topicOf(next))+' · '+weekLabel(next,weeksDone(next.id)+1)+'</div>')+
+    lessonCard(next,weeksDone(next.id)+1,"This week's lesson")+lessonMaterial(next,weeksDone(next.id)+1)+
+    '<section class="card"><div class="card-h"><div class="eyebrow">To log</div>'+(d.tolog.length?chip('warn',d.tolog.length+' waiting'):chip('ok','All logged'))+'</div><div class="rows">'+
+      (d.tolog.map(x=>'<div class="row"><div><div class="b">'+x.classId+' · Week '+x.week+'</div><div class="sub small">'+fdl(x.date)+' · not logged yet</div></div>'+act('logOpen',x.id,'Log now','btn primary')+'</div>').join('')||'<p class="empty">Every session is logged.</p>')+'</div></section>'+
+    '<section class="card"><div class="eyebrow">Students needing attention</div><div class="rows">'+(d.attn.join('')||'<p class="empty">Nobody needs follow-up.</p>')+'</div></section>'+
+    '<section class="card"><div class="eyebrow">Notices</div><div><div class="b">From Mumbai coordination</div><div class="sub">Please log each session within two days of the class.</div></div></section>';
+}
+function viewTeacherClasses(){
+  const d=teacherData();
+  return pageHead('My classes',d.mine.length+(d.mine.length===1?' class':' classes')+' · Mumbai')+
+    '<section class="card"><div class="eyebrow">Classes</div><div class="rows">'+d.mine.map(c=>{const w=weeksDone(c.id);const k=course(c.course);return '<div class="row"><div><div class="b">'+act('openClass',c.id,c.id,'link')+'</div><div class="sub small">'+classStudents(c.id).length+' students · '+pct(classAtt(c.id,addDays(TODAY,-28)))+' attendance, last 4 weeks</div><div class="meter" aria-hidden="true"><i style="width:'+Math.round(w/k.weeks*100)+'%"></i></div><div class="small">Syllabus chart: '+weekLabel(c,w)+'</div></div></div>'}).join('')+'</div></section>'+
+    '<section class="card"><div class="eyebrow">Exams and results</div><div class="rows">'+d.mine.map(c=>{const ex=S.exams.filter(e=>e.course===c.course&&e.sem===c.sem);const open=ex.some(e=>e.open);const ids=classStudents(c.id).map(s=>s.id);
+      const taken=ex.map(e=>S.results.filter(r=>ids.includes(r.sid)&&r.sem===e.sem&&r.sub===e.sub).length);
+      return '<div class="row"><div><div class="b">'+c.id+' · Semester '+c.sem+' exams</div><div class="sub small">'+(ex.length?(open?'Open now · taken so far: '+ex.map((e,i)=>subName(e.sub)+' '+taken[i]).join(', '):'Window opens '+fd(ex[0].from)+', closes '+fd(ex[0].to)):'Not scheduled yet')+'</div></div></div>'+
+        (c.sem>1?'<div class="row"><div><div class="b">'+c.id+' · Semester '+(c.sem-1)+' marksheet</div></div>'+act('marks',c.id+'|'+(c.sem-1),'View')+'</div>':'')}).join('')+'</div></section>'+teacherReadingCard(d.mine);
+}
+function viewTeacherMaterials(){return pageHead('Materials','From the academy library, by your access level')+teacherMaterialsCard()}
+function viewTeacherTraining(){return pageHead('Training','Programmes and refreshers from the academic team')+teacherTrainingCard()}
+function viewTeacherProfile(){
+  const t=S.teachers.find(x=>x.id==='t1');const mine=S.classes.filter(c=>c.teacherId==='t1');
+  const past=S.trainings.filter(tr=>tr.date<TODAY&&invited('t1',tr));const att=past.filter(tr=>tr.attended&&tr.attended.t1);
+  const reqPast=past.filter(tr=>tr.req);const reqAtt=reqPast.filter(tr=>tr.attended&&tr.attended.t1);
+  const r=(l,v)=>'<div class="row"><div class="sub">'+l+'</div><div class="b">'+v+'</div></div>';
+  return pageHead('Sr. Maryam','Teacher · Mumbai')+
+    '<section class="card"><div class="eyebrow">Details</div><div class="rows">'+r('Location','Mumbai')+r('Teaches','Sisters')+r('Classes',mine.map(c=>c.id).join(', '))+r('Time zone','India')+r('Material access',esc(ACCESS[t.access]))+'</div><p class="sub small">Access is set by the academic team or the super admin.</p></section>'+
+    '<section class="card"><div class="eyebrow">Training record</div><div class="tiles" style="grid-template-columns:repeat(2,minmax(0,1fr))"><div><div class="t-v">'+att.length+' of '+past.length+'</div><div class="t-s">Programmes attended</div></div><div><div class="t-v">'+reqAtt.length+' of '+reqPast.length+'</div><div class="t-s">Required refreshers attended</div></div></div>'+
+      '<p class="sub small">This record counts in the teacher performance report.</p></section>';
+}
+
+function certsFor(s){
+  const c=cls(s.classId);const out=[];
+  for(let sem=c.sem;sem>=1;sem--)if(S.published[c.id+'|'+sem]&&semResult(s.id,c.course,sem)==='pass')out.push({key:c.course+'|'+sem,title:course(c.course).name+' · Semester '+sem,line:'has passed Semester '+sem+' ('+BELIEF[sem-1]+') of the '+course(c.course).name+' course',no:'[CERTIFICATE NUMBER]'});
+  if(s.id==='zainab')out.push({key:'INR|0',title:'Introductory course',line:'has completed the Introductory course',no:'[CERTIFICATE NUMBER]'});
+  return out;
+}
+function viewStudentHome(){
+  const s=stu('zainab');const c=cls(s.classId);const st=stuStats(s);const w=weeksDone(c.id);const k=course(c.course);
+  const tolog=c.assistantId===s.id?S.sessions.filter(x=>x.classId===c.id&&x.held&&!x.logged):[];
+  const open=S.exams.some(e=>e.course===c.course&&e.sem===c.sem&&e.open&&best(s.id,e.course,e.sem,e.sub)===null);
+  return '<div><div class="sub">Salaamun alaykum</div><h1>Zainab H.</h1></div>'+
+    (tolog.length?'<section class="card" style="background:var(--gold-tint);border-color:var(--gold-ink)"><div class="eyebrow" style="color:var(--gold-ink)">To log · class assistant</div>'+tolog.map(x=>'<div class="row" style="border-top:0;padding:0"><div><div class="b">'+fdl(x.date)+' session</div><div class="small gold-t">Not logged yet</div></div>'+act('logOpen',x.id,'Log now','btn primary')+'</div>').join('')+'</section>':'')+
+    (open?'<section class="card"><div class="row" style="border-top:0;padding:0"><div><div class="b">Your Semester '+c.sem+' exams are open</div><div class="sub small">Take them from the Exams tab</div></div>'+act('nav','exams','Go to Exams','btn primary')+'</div></section>':'')+
+    nextCard(c,-4,'Toronto','<div>'+esc(courseLabel(c))+' · '+esc(topicOf(c))+' · with '+esc(teacherName(c.teacherId))+'</div>')+
+    lessonCard(c,w+1,'This week · '+(w+1<=k.weeks?'week '+(w+1):'exam'))+(c.course!=='INR'?readingCard(s,c):'')+
+    '<section class="card"><div class="eyebrow">My progress</div><div class="tiles" style="grid-template-columns:repeat(2,minmax(0,1fr))"><div><div class="t-v">'+(w+1<=k.weeks?'Week '+(w+1)+' of '+k.weeks:'Exam week')+'</div><div class="t-s">Semester '+c.sem+' of '+k.sems+'</div></div><div><div class="t-v">'+pct(st.pct)+'</div><div class="t-s">Attendance this semester</div></div></div>'+
+      '<div class="sems">'+Array.from({length:k.sems},(_,i)=>'<span class="'+(i+1<c.sem?'done':i+1===c.sem?'now':'')+'">'+(i+1)+(i+1<c.sem?' · Passed':i+1===c.sem?' · Now':'')+'</span>').join('')+'</div></section>';
+}
+function viewStudentExams(){
+  const s=stu('zainab');const c=cls(s.classId);
+  const ex=S.exams.filter(e=>e.course===c.course&&e.sem===c.sem);const open=ex.some(e=>e.open);const pubNow=S.published[c.id+'|'+c.sem];
+  const resRows=sem=>'<div class="rows">'+['b','l','e'].map(kk=>{const v=best(s.id,c.course,sem,kk);return '<div class="row"><div>'+subName(kk)+'</div><div class="b num">'+(v===null?'Not taken':v+'%')+'</div>'+(v===null?'':v>=50?chip('ok','Pass'):chip('warn','Fail'))+'</div>'}).join('')+'</div>';
+  let exam;
+  if(pubNow)exam='<div class="b">Semester '+c.sem+' results</div>'+resRows(c.sem);
+  else if(open)exam='<div class="b">Semester '+c.sem+' exams are open until '+fd(ex[0].to)+'</div><div class="rows">'+ex.map(e=>{const done=best(s.id,e.course,e.sem,e.sub)!==null;return '<div class="row"><div>'+esc(subName(e.sub))+(e.sub==='b'?' · '+topicOf(c):'')+'</div>'+(done?chip('gold','Submitted · result awaits publishing'):act('examStart',e.id,'Start exam','btn primary'))+'</div>'}).join('')+'</div>';
+  else exam='<div><div class="b">Semester '+c.sem+' exams: '+(ex.length?fd(ex[0].from)+' to '+fd(ex[0].to):'dates to be announced')+'</div><div class="sub small">Belief, Islamic Laws and Ethics. A Start exam button appears here when the window opens.</div></div>';
+  const prev=c.sem>1&&S.published[c.id+'|'+(c.sem-1)]?'<div class="b">Semester '+(c.sem-1)+' results</div>'+resRows(c.sem-1):'';
+  const certs=certsFor(s);
+  return pageHead('Exams and certificates',esc(courseLabel(c)))+
+    '<section class="card"><div class="eyebrow">Exams</div>'+exam+prev+'</section>'+
+    '<section class="card"><div class="eyebrow">Certificates</div><div class="rows">'+certs.map(x=>'<div class="row"><div><div class="b">'+esc(x.title)+'</div></div>'+act('cert',x.key,'View')+'</div>').join('')+'</div></section>';
+}
+function viewStudentMaterials(){const c=cls(stu('zainab').classId);return pageHead('Materials','Shared by your teacher with '+c.id)+studentMaterialsCard(c)}
+function viewStudentProfile(){
+  const s=stu('zainab');const c=cls(s.classId);
+  const r=(l,v)=>'<div class="row"><div class="sub">'+l+'</div><div class="b">'+v+'</div></div>';
+  const sw=(key,label)=>'<div class="row"><div id="sw-'+key+'" class="b">'+label+'</div><button type="button" role="switch" aria-checked="'+S.prefs[key]+'" aria-labelledby="sw-'+key+'" class="pick'+(S.prefs[key]?' on':'')+'" style="width:88px" data-act="pref" data-arg="'+key+'">'+(S.prefs[key]?'On':'Off')+'</button></div>';
+  return pageHead('Zainab H.','Student'+(c.assistantId===s.id?' · class assistant':'')+' · '+c.id)+
+    '<section class="card"><div class="eyebrow">Details</div><div class="rows">'+r('Class',c.id)+r('Course',esc(courseLabel(c)))+r('Teacher',esc(teacherName(c.teacherId)))+r('Location','Mumbai')+r('Time zone','Toronto')+'</div></section>'+
+    '<section class="card"><div class="eyebrow">Reminders</div><div class="rows">'+sw('email','Email reminders')+sw('wa','WhatsApp reminders')+sw('absence','Reminders when I miss a class')+'</div></section>';
+}
+const norm=s=>String(s==null?'':s).toLowerCase().replace(/[^\p{L}\p{N}]/gu,'');
+function isAns(q,a){if(q.type==='match')return !!a&&a.every(x=>x!=='');if(q.type==='fill')return !!(a&&String(a).trim());return a!==undefined&&a!==null}
+function qScore(q,a){
+  if(!isAns(q,a))return 0;
+  if(q.type==='match')return a.filter((x,i)=>x!==''&&+x===i).length/q.left.length;
+  if(q.type==='fill'){const n=norm(a);return q.answers.some(x=>norm(x)===n)?1:0}
+  return a===q.correct?1:0;
+}
+function examLight(){
+  const e=S.exam;if(!e)return;const n=e.qs.filter((q,i)=>isAns(q,e.ans[i])).length;
+  const c=document.getElementById('ex-count');if(c)c.textContent='One attempt. '+n+' of '+e.qs.length+' answered.';
+  const b=document.getElementById('ex-submit');if(b)b.disabled=n<e.qs.length;
+}
+function viewExamTake(){
+  const e=S.exam;const ex=S.exams.find(x=>x.id===e.examId);const q=e.qs[e.i];const a=e.ans[e.i];const last=e.i===e.qs.length-1;
+  const answered=e.qs.filter((qq,i)=>isAns(qq,e.ans[i])).length;
+  let body;
+  if(q.type==='fill')body='<div class="field"><label for="ex-fill">Your answer for the blank</label><input id="ex-fill" autocomplete="off" autocapitalize="off" spellcheck="false" data-bind="exam.ans.'+e.i+'" value="'+esc(a||'')+'"></div>';
+  else if(q.type==='match')body='<div style="display:flex;flex-direction:column;gap:12px">'+q.left.map((l,j)=>'<div class="field"><label for="ex-m-'+j+'">'+esc(l)+'</label><select id="ex-m-'+j+'" data-bind="exam.ans.'+e.i+'.'+j+'">'+opts([['','Choose its match']].concat(e.order[e.i].map(idx=>[idx,q.right[idx]])),a[j])+'</select></div>').join('')+'</div>';
+  else body=(q.type==='ayah'?'<div class="ar big" lang="ar" dir="rtl">'+esc(q.ar)+'</div>':'')+stmtList(q)+
+    '<div style="display:flex;flex-direction:column;gap:10px">'+q.options.map((o,j)=>'<button type="button" class="opt'+(a===j?' on':'')+'" aria-pressed="'+(a===j)+'" data-act="examPick" data-arg="'+j+'"><b>'+'ABCD'[j]+'</b><span>'+tx(o)+'</span></button>').join('')+'</div>'+
+    '<p class="sub small">'+(a===undefined?'Choose one answer.':'Answer '+'ABCD'[a]+' saved. You can change it until you submit.')+'</p>';
+  return '<div><div class="sub">'+esc(course(ex.course).name)+' · Semester '+ex.sem+' exam</div><h1>'+esc(subName(ex.sub))+'</h1><div class="sub">Question '+(e.i+1)+' of '+e.qs.length+' · '+QTYPE[q.type]+'</div><div class="meter" aria-hidden="true" style="margin-top:8px"><i style="width:'+Math.round((e.i+1)/e.qs.length*100)+'%"></i></div></div>'+
+    '<h2 id="ex-q" style="font-size:19px;line-height:1.35">'+tx(q.text)+'</h2>'+body+
+    '<div class="seg">'+'<button type="button" class="btn" data-act="examGo" data-arg="-1"'+(e.i===0?' disabled':'')+'>Previous</button>'+
+      (last?'<button type="button" class="btn primary" id="ex-submit" data-act="examSubmit"'+(answered<e.qs.length?' disabled':'')+'>Submit exam</button>':'<button type="button" class="btn primary" data-act="examGo" data-arg="1">Next</button>')+'</div>'+
+    '<p class="sub small" id="ex-count" style="text-align:center">One attempt. '+answered+' of '+e.qs.length+' answered.</p>';
+}
+
+/* ---------- modals ---------- */
+function modalHtml(){
+  const m=S.modal;if(!m)return '';let b='';
+  if(m.t==='assign'){const c=cls(m.cid);const list=S.teachers.filter(t=>t.g===c.g);
+    b='<h2>Assign a teacher to '+c.id+'</h2><p class="sub">Only '+(c.g==='F'?'sisters':'brothers')+' are offered, because the teacher must be the same gender as the class.</p>'+
+      '<div class="field"><label for="as-t">Teacher</label><select id="as-t" data-bind="form.teacher">'+opts(list.map(t=>{const n=S.classes.filter(k=>k.teacherId===t.id).length;return [t.id,t.name+' · '+n+(n===1?' class':' classes')]}),S.form.teacher)+'</select></div>'+
+      '<div class="btns">'+act('assignSave',c.id,'Assign teacher','btn primary')+act('modalClose','','Cancel')+'</div>'}
+  if(m.t==='class'){const f=S.form;const can=S.role==='locadmin';const k=course(f.course);
+    b='<h2>Create class in Mumbai</h2>'+
+      '<div class="form"><div class="field"><label for="cl-c">Course type</label><select id="cl-c" data-bind="form.course" data-rerender="1">'+opts(S.courses.map(c=>[c.code,c.name]),f.course)+'</select></div>'+
+      '<div class="field"><label for="cl-s">Semester</label><select id="cl-s" data-bind="form.sem">'+opts(Array.from({length:k.sems},(_,i)=>[i+1,'Semester '+(i+1)]),f.sem)+'</select></div>'+
+      '<div class="field"><label for="cl-l">Language</label><select id="cl-l" disabled><option>English</option></select></div>'+
+      '<div class="field"><label for="cl-g">Group</label><select id="cl-g" data-bind="form.g" data-rerender="1">'+opts([['F','Sisters'],['M','Brothers']],f.g)+'</select></div>'+
+      '<div class="field"><label for="cl-d">Day</label><select id="cl-d" data-bind="form.day">'+opts(DOWL.map((d,i)=>[i,d]),f.day)+'</select></div>'+
+      '<div class="field"><label for="cl-t">Time (India)</label><input id="cl-t" type="time" data-bind="form.time" value="'+esc(f.time)+'"></div>'+
+      (can?'<div class="field"><label for="cl-te">Teacher</label><select id="cl-te" data-bind="form.teacher">'+opts([['','Assign later']].concat(S.teachers.filter(t=>t.g===f.g).map(t=>[t.id,t.name])),f.teacher)+'</select></div>':'')+
+      '<div class="field"><label for="cl-m">Google Meet link</label><input id="cl-m" data-bind="form.meet" value="'+esc(f.meet)+'" placeholder="Paste the class Meet link"></div></div>'+
+      '<p class="sub small">Class number will be MUM-'+f.course+'-'+String(nextCounter('MUM',f.course)).padStart(3,'0')+'.'+(can?'':' The class is saved as awaiting teacher until the primary or secondary responsible person assigns one.')+'</p>'+
+      '<div class="btns">'+act('classSave','','Create class','btn primary')+act('modalClose','','Cancel')+'</div>'}
+  if(m.t==='alloc'){const r=S.regs.find(x=>x.id===m.rid);const list=S.classes.filter(c=>c.g===r.g).sort((a,b)=>(a.course===r.course?0:1)-(b.course===r.course?0:1));
+    b='<h2>Allocate a class to '+esc(r.name)+'</h2><p class="sub">'+group(r.g)+' classes only. A student can be in one class at a time, in any location.</p>'+
+      '<div class="field"><label for="al-c">Class</label><select id="al-c" data-bind="form.cid">'+opts(list.map(c=>[c.id,c.id+' · '+courseLabel(c)+' · '+DOW[c.day]+' '+ft(c.time)+(c.status==='awaiting'?' · awaiting teacher':'')]),S.form.cid)+'</select></div>'+
+      '<div class="btns">'+act('allocSave',r.id,'Add student and allocate','btn primary')+act('modalClose','','Cancel')+'</div>'}
+  if(m.t==='call'){b='<h2>Record the weekly call</h2><p class="sub">'+fdl(S.nextCall)+'</p>'+
+      '<div class="field"><label for="ca-st">Status</label><select id="ca-st" data-bind="form.status">'+opts([['Held','Held'],['Missed','Missed'],['Rescheduled','Rescheduled']],S.form.status)+'</select></div>'+
+      '<div class="field"><label for="ca-ai">Action item from this call (optional)</label><input id="ca-ai" data-bind="form.text" value="'+esc(S.form.text)+'" placeholder="What needs doing"></div>'+
+      '<div class="form"><div class="field"><label for="ca-ow">Owner</label><select id="ca-ow" data-bind="form.owner">'+opts([['Br. Jafar','Br. Jafar'],['Br. Kazim','Br. Kazim'],['Sr. Sabiha','Sr. Sabiha']],S.form.owner)+'</select></div>'+
+      '<div class="field"><label for="ca-du">Due date</label><input id="ca-du" type="date" data-bind="form.due" value="'+esc(S.form.due)+'"></div></div>'+
+      '<div class="btns">'+act('callSave','','Save call','btn primary')+act('modalClose','','Cancel')+'</div>'}
+  if(m.t==='reminder'){const s=stu(m.sid);const c=cls(s.classId);const st=stuStats(s);const d=nextDate(c);const w=whenFor(c,d,5.5);const tr=S.traditions[st.miss%S.traditions.length];
+    const msg='Salaamun alaykum '+s.name+',\n\nWe missed you in the last '+st.miss+' sessions of your '+course(c.course).name+' class ('+c.id+').\n\nYour attendance this semester: '+pct(st.pct)+'\nSessions missed: '+st.missed.map(x=>fd(x.date)+(x.week?' (week '+x.week+')':'')).reverse().join(', ')+'\nTopics you missed are on your dashboard under Syllabus.\n\nNext class: '+fdl(w.date)+' at '+w.time+' India time\nJoin: [class Meet link]\n\n'+tr.text+'\n'+tr.source;
+    b='<h2>Reminder to '+esc(s.name)+'</h2><p class="sub">Sent automatically by email and WhatsApp, one for each missed session and never more than one a week. '+statChip(st.status)+'</p><div class="msg">'+esc(msg)+'</div>'+
+      '<p class="sub small">'+(st.status==='followup'?'Because '+st.miss+' sessions were missed in a row, this is also escalated to Br. Jafar, Br. Kazim and Sr. Sabiha with an action item to contact her personally.':'The teacher has been alerted. After 4 missed sessions in a row it escalates to the location admins.')+'</p>'+
+      '<div class="btns">'+act('modalClose','','Close','btn primary')+'</div>'}
+  if(m.t==='cert'){const s=stu('zainab');const x=certsFor(s).find(k=>k.key===m.key);
+    b='<div class="cert"><div class="cn">Almuntazar Academy</div><div class="eyebrow">Certificate</div><div class="sub">This certifies that</div><div class="nm">'+esc(s.name)+'</div><div>'+esc(x.line)+'.</div><div class="sub small">Issued 12 Oct 2026 · No. '+esc(x.no)+'</div><div class="sig">[Dean\'s signature image, loaded once by the super admin]</div></div>'+
+      '<div class="btns">'+act('modalClose','','Close','btn primary')+'</div>'}
+  if(m.t==='import'){
+    const qs=PAPER.questions;const total=qs.reduce((t,q)=>t+(q.type==='bank'?q.blanks:1),0);const found=qs.filter(q=>q.type!=='bank'&&q.correct!=='').length;
+    if(!m.step)b='<h2>Import a question paper</h2><p>Upload a Word or PDF paper with each answer in yellow highlight or in bold. The system reads the questions and shows them for you to check before anything is saved.</p><p class="sub small">The prototype cannot take uploads, so it shows what was read from the paper you shared: '+esc(PAPER.file)+'.</p><div class="btns">'+act('importRun','','Review what was found','btn primary')+act('modalClose','','Cancel')+'</div>';
+    else b='<h2>'+qs.length+' questions found</h2><p class="sub small">Tauheed QP, Chp 1: Paths of recognition · 50 marks · 1 hour · '+found+' of '+total+' answers were marked in the file, '+(total-found)+' are still needed. Ticked questions are saved to the course type, semester and subject chosen in the question bank.</p>'+
+      '<p class="small">Word bank for section 3: '+PAPER.bank.map(tx).join(' · ')+'</p><div>'+S.form.imp.map((q,i)=>'<div class="qa"><label class="check"><input type="checkbox" id="im-'+i+'" data-bind="form.imp.'+i+'.include"'+(q.include?' checked':'')+(q.type==='bank'?' disabled':'')+'><span class="b">'+q.s+'.'+q.n+' '+tx(q.text)+'</span></label><div class="btns">'+chip('mute',QTYPE[q.type])+chip('mute',q.type==='bank'?q.blanks+' blanks, 1 mark each':q.marks+(q.marks===1?' mark':' marks'))+'</div>'+stmtList(q)+
+      (q.type==='bank'?'<div class="small warn-t">No answers are marked in the file. The blanks need their words chosen from the bank before this can be saved.</div>':'<div class="field"><label for="im-c'+i+'">Correct answer</label><select id="im-c'+i+'" data-bind="form.imp.'+i+'.correct">'+opts([['','Choose the answer']].concat(q.options.map((o,j)=>[j,'ABCD'[j]+'. '+o])),q.correct)+'</select></div><div class="small '+(q.correct===''?'warn-t':'sub')+'">'+esc(q.how)+'</div>')+'</div>').join('')+'</div><div class="btns">'+act('importSave','','Save ticked questions','btn primary')+act('modalClose','','Cancel')+'</div>'}
+  if(m.t==='share'){const mt=S.materials.find(x=>x.id===m.mid);const mine=S.classes.filter(c=>c.teacherId==='t1'&&(mt.course==='ALL'||(c.course===mt.course&&(!mt.sem||c.sem===mt.sem))));
+    b='<h2>Share with a class</h2><p><span class="b">'+esc(mt.title)+'</span></p><p class="sub small">Every student in the class sees it under Syllabus and materials and is told by their chosen reminder channel.</p>'+
+      (mine.length?'<div class="field"><label for="sh-c">Class</label><select id="sh-c" data-bind="form.cid">'+opts(mine.map(c=>[c.id,c.id+' · '+courseLabel(c)+' · '+classStudents(c.id).length+' students'+(S.shares.some(s=>s.mid===mt.id&&s.cid===c.id)?' · already shared':'')]),S.form.cid)+'</select></div><div class="btns">'+act('shareSave',mt.id,'Share','btn primary')+act('modalClose','','Cancel')+'</div>'
+        :'<p>None of your classes is on this course and semester.</p><div class="btns">'+act('modalClose','','Close','btn primary')+'</div>')}
+  if(m.t==='done'){b='<h2>Exam submitted</h2><p>Your answers are saved. Your mark appears under Exams once the results are published.</p><div class="btns">'+act('modalClose','','Done','btn primary')+'</div>'}
+  return '<div class="overlay" data-act="overlay"><div class="modal" role="dialog" aria-modal="true">'+b+(m.err?'<p class="err">'+esc(m.err)+'</p>':'')+'</div></div>';
+}
+function nextCounter(loc,co){const nums=S.classes.filter(c=>c.loc===loc&&c.course===co).map(c=>+c.id.split('-')[2]);return (nums.length?Math.max.apply(null,nums):0)+1}
+
+/* ---------- render ---------- */
+const VIEWS={
+  'super.home':viewSuperHome,'super.locations':viewLocations,'super.masters':viewMasters,'super.reports':viewReports,
+  'academic.chart':viewChart,'academic.bank':viewBank,'academic.exams':viewExams,'academic.traditions':viewTraditions,'academic.materials':viewMaterials,'academic.training':viewTraining,
+  'locadmin.home':viewLocHome,'locadmin.classes':viewClasses,'locadmin.students':viewStudents,'locadmin.coord':viewCoord,
+  'coord.home':viewCoordHome,'coord.classes':viewClasses,'coord.students':viewStudents,
+  'teacher.home':viewTeacherHome,'teacher.classes':viewTeacherClasses,'teacher.materials':viewTeacherMaterials,'teacher.training':viewTeacherTraining,'teacher.profile':viewTeacherProfile,
+  'student.home':viewStudentHome,'student.exams':viewStudentExams,'student.materials':viewStudentMaterials,'student.profile':viewStudentProfile};
+const SHARED={class:viewClass,marks:viewMarks,log:viewLog,exam:viewExamTake};
+function navHtml(){
+  const tabs=TABS[S.role];const cur=S.tab||tabs[0][0];
+  const b=(t,cl)=>'<button type="button" class="'+cl+'" data-act="nav" data-arg="'+t[0]+'"'+(cur===t[0]?' aria-current="page"':'')+'>'+icon(t[0])+'<span>'+(cl==='bt'?(t[2]||t[1]):t[1])+'</span></button>';
+  const side='<nav class="side" aria-label="Menu"><div class="side-who"><div class="b">'+esc(me().person)+'</div><div class="sub small">'+esc(me().label)+'</div></div>'+tabs.map(t=>b(t,'navi')).join('')+'</nav>';
+  const many=tabs.length>5;const shown=many?tabs.slice(0,4):tabs;const rest=many?tabs.slice(4):[];const inRest=rest.some(t=>t[0]===cur);
+  const bar='<nav class="tabbar" aria-label="Menu">'+shown.map(t=>b(t,'bt')).join('')+
+    (many?'<button type="button" class="bt" data-act="more" aria-expanded="'+!!S.more+'"'+(inRest?' aria-current="page"':'')+'>'+icon('more')+'<span>More</span></button>':'')+'</nav>'+
+    (many&&S.more?'<div class="more-sheet">'+rest.map(t=>b(t,'navi')).join('')+'</div>':'');
+  return {side,bar};
+}
+function render(){
+  const fn=SHARED[S.view]||VIEWS[S.role+'.'+S.view]||VIEWS[S.role+'.'+TABS[S.role][0][0]];
+  const narrow=S.role==='teacher'||S.role==='student'||S.view==='log'||S.view==='exam';
+  const showNav=S.view!=='exam';const n=navHtml();
+  document.getElementById('app').innerHTML=
+    '<header class="bar"><div class="bar-in"><div class="brand">Almuntazar Academy</div>'+
+    '<label class="who" for="role-select"><span>Viewing as</span><select id="role-select">'+opts(ROLES.map(r=>[r.id,r.label+' · '+r.person]),S.role)+'</select></label></div></header>'+
+    '<div class="note"><div>Prototype with sample data · sample date Mon 12 Oct 2026 · changes reset when the page reloads</div></div>'+
+    '<div class="shell'+(showNav?' has-nav':'')+'">'+(showNav?n.side:'')+
+    '<main class="wrap'+(narrow?' narrow':'')+'">'+fn()+'</main></div>'+(showNav?n.bar:'');
+  document.getElementById('modal-root').innerHTML=modalHtml();
+}
+let toastTimer;
+function toast(t){const el=document.getElementById('toast');el.textContent=t;el.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>{el.hidden=true},3600)}
+function go(view,p){S.view=view;S.p=p||{};S.more=false;if(TABS[S.role].some(t=>t[0]===view))S.tab=view;window.scrollTo(0,0)}
+function setPath(path,val){const k=path.split('.');let o=S;for(let i=0;i<k.length-1;i++)o=o[k[i]];o[k[k.length-1]]=val}
+
+/* ---------- actions ---------- */
+const A={
+  nav(v){S.back=null;go(v)},
+  more(){S.more=!S.more},
+  rdWeek(w){S.form.rd.week=w},
+  toast(t){toast(t)},
+  back(){const b=S.back;S.back=null;if(b)go(b.view,b.p);else go(TABS[S.role][0][0])},
+  report(code){go('reports',{report:'location',loc:code})},
+  openClass(cid){S.back={view:S.view,p:S.p};go('class',{cid:cid})},
+  marks(arg){const a=arg.split('|');if(S.view!=='class')S.back={view:S.view,p:S.p};else S.back={view:'class',p:S.p};go('marks',{cid:a[0],sem:+a[1]})},
+  publish(key){S.published[key]=true;toast('Results published. Students can now see their marks and certificates.')},
+  remind(){toast('Reminder sent to the teacher and the class assistant by email and WhatsApp (sample)')},
+  chartLoad(key){S.charts[key]=true;toast('Sample chart loaded')},
+  qEdit(id){S.form.qb.edit=id;setTimeout(()=>{const el=document.getElementById('q-form');if(el&&el.scrollIntoView)el.scrollIntoView({block:'start'})},0)},
+  qEditCancel(){S.form.qb.edit=null},
+  importOpen(){S.modal={t:'import',step:0}},
+  importRun(){S.form.imp=PAPER.questions.map(q=>Object.assign({},q,{include:q.type!=='bank'&&q.correct!==''}));S.modal={t:'import',step:1}},
+  importSave(){const f=S.form.qb;const pick=S.form.imp.filter(q=>q.include&&q.type!=='bank');
+    if(!pick.length){S.modal.err='Tick at least one question to save.';return}
+    if(pick.some(q=>q.correct==='')){S.modal.err='A ticked question has no answer yet. Choose its answer or untick it.';return}
+    pick.forEach(q=>addQ(f.course,+f.sem,f.sub,q.text,q.options,+q.correct,{type:q.type,stmts:q.stmts}));S.modal=null;toast(pick.length+' questions imported into the bank')},
+  range(arg){S.p.to=TODAY;S.p.from=arg==='all'?'2026-09-01':addDays(TODAY,-(+arg))},
+  shareOpen(mid){const mt=S.materials.find(x=>x.id===mid);const mine=S.classes.filter(c=>c.teacherId==='t1'&&(mt.course==='ALL'||(c.course===mt.course&&(!mt.sem||c.sem===mt.sem))));S.form={cid:mine.length?mine[0].id:''};S.modal={t:'share',mid:mid}},
+  shareSave(mid){const cid=S.form.cid;if(S.shares.some(s=>s.mid===mid&&s.cid===cid)){S.modal.err='This is already shared with '+cid+'.';return}S.shares.push({mid:mid,cid:cid,date:TODAY,by:'Sr. Maryam'});S.modal=null;toast('Shared with '+cid+'. '+classStudents(cid).length+' students can now see it.')},
+  rsvp(arg){const a=arg.split('|');S.trainings.find(t=>t.id===a[0]).rsvp.t1=a[1];toast(a[1]==='yes'?'Reply sent: attending. A reminder comes the day before.':'Reply sent: not attending.')},
+  qRetire(id){S.questions.find(q=>q.id===id).retired=true;toast('Question retired. It stays on past exams but is not used in new ones.')},
+  examToggle(id){const e=S.exams.find(x=>x.id===id);const on=!e.open;S.exams.filter(x=>x.course===e.course&&x.sem===e.sem).forEach(x=>{x.open=on});toast(on?'Window opened for all three subjects. Switch to the student to take the exam.':'Window closed')},
+  closeAction(id){S.actions.find(a=>a.id===id).done=true;toast('Action item closed')},
+  assignOpen(cid){const c=cls(cid);const l=S.teachers.filter(t=>t.g===c.g);S.form={teacher:l[0].id};S.modal={t:'assign',cid:cid}},
+  assignSave(cid){const c=cls(cid);c.teacherId=S.form.teacher;c.status='active';S.modal=null;toast(teacherName(c.teacherId)+' assigned. '+cid+' is now active.')},
+  classNew(){S.form={course:'BAS',sem:1,g:'F',day:1,time:'20:00',teacher:'',meet:''};S.modal={t:'class'}},
+  classSave(){const f=S.form;const t=(f.time||'20:00').split(':').map(Number);const can=S.role==='locadmin';const id='MUM-'+f.course+'-'+String(nextCounter('MUM',f.course)).padStart(3,'0');
+    const tid=can&&f.teacher&&S.teachers.some(x=>x.id===f.teacher&&x.g===f.g)?f.teacher:null;
+    S.classes.push({id:id,loc:'MUM',course:f.course,sem:Math.min(+f.sem||1,course(f.course).sems),g:f.g,teacherId:tid,day:+f.day,time:t[0]*60+(t[1]||0),status:tid?'active':'awaiting',createdBy:me().person,createdOn:TODAY,meet:f.meet});
+    S.modal=null;toast(id+' created'+(tid?' with '+teacherName(tid):' and saved as awaiting teacher'))},
+  allocOpen(rid){const r=S.regs.find(x=>x.id===rid);const l=S.classes.filter(c=>c.g===r.g).sort((a,b)=>(a.course===r.course?0:1)-(b.course===r.course?0:1));S.form={cid:l[0].id};S.modal={t:'alloc',rid:rid}},
+  allocSave(rid){const r=S.regs.find(x=>x.id===rid);S.students.push({id:'s'+(++nS),name:r.name,g:r.g,classId:S.form.cid,joined:TODAY,p:.9,city:r.city});S.regs=S.regs.filter(x=>x.id!==rid);S.modal=null;toast(r.name+' added to '+S.form.cid+' with status New')},
+  callOpen(){S.form={status:'Held',text:'',owner:'Br. Jafar',due:addDays(TODAY,7)};S.modal={t:'call'}},
+  callSave(){const f=S.form;S.calls.push({date:S.nextCall,status:f.status});S.nextCall=addDays(S.nextCall,7);if(f.text&&f.text.trim())S.actions.push({id:'a'+Date.now(),text:f.text.trim(),owner:f.owner,due:f.due||addDays(TODAY,7),done:false,rem:0});S.modal=null;toast('Call recorded as '+f.status.toLowerCase()+(f.text&&f.text.trim()?' with one action item':''))},
+  reminder(sid){S.modal={t:'reminder',sid:sid}},
+  cert(key){S.modal={t:'cert',key:key}},
+  modalClose(){S.modal=null},
+  pref(key){S.prefs[key]=!S.prefs[key];if(key==='absence'&&!S.prefs[key])toast('Absence reminders are off. Your teacher is still told if you miss classes.')},
+  logOpen(sid){const x=S.sessions.find(s=>s.id===sid);const c=cls(x.classId);S.back={view:S.view,p:S.p};S.draft={sid:sid,held:true,reason:'',verse:verseRef(versesBefore(c,x.week)+3),covered:{b:true,l:true,e:true},att:{},note:''};go('log')},
+  logHeld(v){S.draft.held=v==='1'},
+  logAtt(arg){const a=arg.split('|');S.draft.att[a[0]]=a[1]},
+  logSave(){const d=S.draft;const x=S.sessions.find(s=>s.id===d.sid);const c=cls(x.classId);const studs=classStudents(c.id).filter(s=>s.joined<=x.date);
+    x.logged=true;x.held=d.held;x.reason=d.reason;x.verse=d.verse;x.loggedBy=me().person+(S.role==='student'?' (assistant)':S.role==='locadmin'?' (for the teacher)':'');
+    let p=0;if(d.held){studs.forEach(s=>{const v=d.att[s.id]||'p';x.att[s.id]=v;if(v==='p')p++})}else{x.week=null}
+    S.draft=null;A.back();toast(d.held?'Saved. '+p+' of '+studs.length+' present.':'Saved as cancelled.')},
+  examStart(id){const e=S.exams.find(x=>x.id===id);const qs=S.questions.filter(q=>!q.retired&&q.course===e.course&&q.sem===e.sem&&q.sub===e.sub);if(!qs.length){toast('This exam has no questions yet');return}const sh=n=>{const a=Array.from({length:n},(_,i)=>i);for(let t=0;t<5;t++){for(let i=n-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));const x=a[i];a[i]=a[j];a[j]=x}if(n<2||a.some((v,i)=>v!==i))break}return a};
+    S.exam={examId:id,i:0,qs:qs,ans:qs.map(q=>q.type==='match'?q.left.map(()=>''):undefined),order:qs.map(q=>q.type==='match'?sh(q.right.length):null)};go('exam')},
+  examPick(j){S.exam.ans[S.exam.i]=+j},
+  examGo(n){S.exam.i=Math.max(0,Math.min(S.exam.qs.length-1,S.exam.i+ +n));window.scrollTo(0,0)},
+  examSubmit(){const e=S.exam;const ex=S.exams.find(x=>x.id===e.examId);const right=e.qs.reduce((t,q,i)=>t+qScore(q,e.ans[i]),0);const s=stu('zainab');
+    S.results.push({sid:s.id,cid:s.classId,course:ex.course,sem:ex.sem,sub:ex.sub,pct:Math.round(right/e.qs.length*100),attempt:1});S.exam=null;go('exams');S.modal={t:'done'}},
+  overlay(_,el,ev){if(ev.target===el)S.modal=null}
+};
+const F={
+  locAdd(d){const code=d.code.trim().toUpperCase();if(S.locations.some(l=>l.code===code)){S.p.err='The short code '+code+' is already used. Choose another.';return}
+    S.locations.push({code:code,name:d.name.trim(),primary:d.primary.trim(),secondary:d.secondary.trim(),coordinator:d.coordinator.trim()||'None yet',callDay:d.callDay,callTime:d.callTime});S.locations.sort((a,b)=>a.name<b.name?-1:1);S.p.err='';toast(d.name.trim()+' added with code '+code)},
+  courseAdd(d){const code=d.code.trim().toUpperCase();if(S.courses.some(c=>c.code===code)){toast('That code is already used');return}S.courses.push({code:code,name:d.name.trim(),sems:+d.sems||1,weeks:+d.weeks||1});toast(d.name.trim()+' added')},
+  subjectAdd(d){S.subjects.push({key:'x'+S.subjects.length,name:d.name.trim(),min:+d.min||10,exam:false});toast(d.name.trim()+' added')},
+  rdSave(d){const w=S.form.rd.week;const t=TG();let e=rd('zainab',w);if(!e){e={sid:'zainab',week:w};S.reading.push(e)}e.ayat=+d.ayat;e.pages=+d.pages;e.book=d.book||'';
+    toast('Saved for '+wkLabel(w)+': '+e.ayat+' of '+t.ayat+' ayat, '+e.pages+' of '+t.pages+' pages.')},
+  matAdd(d){const f=d.file&&d.file.name?d.file.name:'';S.materials.unshift({id:'m'+Date.now(),title:d.title.trim(),type:d.type,course:d.course,sem:+d.sem,sub:d.sub,week:d.week?+d.week:null,pages:d.pages?+d.pages:null,share:d.share==='true',src:f||d.link.trim()||'No file attached',date:TODAY});toast('Added to the library')},
+  trainAdd(d){const t=(d.time||'11:00').split(':').map(Number);S.trainings.push({id:'tr'+Date.now(),title:d.title.trim(),kind:d.kind,course:d.course,sem:+d.sem,date:d.date,time:t[0]*60+(t[1]||0),mode:d.mode.trim()||'Online on Google Meet',facilitator:d.facilitator.trim()||'Academic team',req:!!d.req,rsvp:{},attended:null});
+    const n=S.teachers.filter(x=>invited(x.id,S.trainings[S.trainings.length-1])).length;toast('Scheduled. '+n+' teachers invited by email and WhatsApp.')},
+  qAdd(d){const f=S.form.qb;const ex=f.edit?S.questions.find(x=>x.id===f.edit):null;const t=ex?ex.type:f.type||'single';const q={text:d.text.trim()};
+    if(t==='single'||t==='ayah'||t==='combo'){q.options=[d.o0,d.o1,d.o2,d.o3].map(x=>x.trim());q.correct=+d.correct;if(t==='ayah')q.ar=d.ar.trim()}
+    if(t==='fill')q.answers=d.answers.split(',').map(x=>x.trim()).filter(Boolean);
+    if(t==='match'){q.left=[];q.right=[];for(let i=0;i<4;i++){if(d['l'+i].trim()&&d['r'+i].trim()){q.left.push(d['l'+i].trim());q.right.push(d['r'+i].trim())}}}
+    if(ex){Object.assign(ex,q);f.edit=null;toast('Question updated')}else{addQ(f.course,+f.sem,f.sub,q.text,q.options||[],q.correct||0,Object.assign({type:t},q));toast('Question saved. Add the next one.')}},
+  tradAdd(d){S.traditions.push({id:'h'+Date.now(),text:d.text.trim(),source:d.source.trim()});toast('Added to the library')},
+  actionAdd(d){S.actions.push({id:'a'+Date.now(),text:d.text.trim(),owner:d.owner,due:d.due||addDays(TODAY,7),done:false,rem:0});toast('Action item added')}
+};
+document.addEventListener('click',ev=>{
+  const el=ev.target.closest('[data-act]');if(!el||el.disabled)return;
+  if(el.dataset.act==='overlay'&&ev.target!==el)return;
+  const fn=A[el.dataset.act];if(!fn)return;fn(el.dataset.arg,el,ev);render();
+});
+document.addEventListener('submit',ev=>{
+  const f=ev.target.closest('[data-form]');if(!f)return;ev.preventDefault();
+  F[f.dataset.form](Object.fromEntries(new FormData(f)));render();
+});
+function onInput(ev){
+  const el=ev.target;
+  if(el.id==='role-select'){if(ev.type!=='change')return;S.role=el.value;document.getElementById('toast').hidden=true;S.modal=null;S.draft=null;S.exam=null;S.back=null;S.form={};S.tab=null;go(TABS[S.role][0][0]);render();return}
+  if(!el.dataset||!el.dataset.bind)return;
+  setPath(el.dataset.bind,el.type==='checkbox'?el.checked:el.value);
+  if(el.dataset.bind.indexOf('exam.')===0)examLight();
+  if(el.dataset.rerender&&ev.type==='change')render();
+}
+document.addEventListener('input',onInput);
+document.addEventListener('change',onInput);
+document.addEventListener('keydown',ev=>{if(ev.key==='Escape'&&S.modal){S.modal=null;render()}});
+render();
+})();
+</script>
+
+</body></html>

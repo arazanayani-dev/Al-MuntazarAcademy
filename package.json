@@ -1,0 +1,19 @@
+{
+  "name": "almuntazar-academy",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Almuntazar Academy: classes, attendance, exams, materials and coordination for every location",
+  "type": "module",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "start": "node --no-warnings=ExperimentalWarning server/index.js",
+    "dev": "node --no-warnings=ExperimentalWarning --watch server/index.js",
+    "seed": "node --no-warnings=ExperimentalWarning server/seed-cli.js",
+    "test": "node --no-warnings=ExperimentalWarning --test \"test/**/*.test.js\""
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
