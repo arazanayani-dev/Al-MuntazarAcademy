@@ -46,9 +46,9 @@ export function renumber(store, cid) {
 }
 
 /* Creates a session record for every scheduled class date that has passed, so it can be logged. */
-export function ensureSessions(store, today) {
+export async function ensureSessions(store, today) {
   let made = 0;
-  store.tx(() => {
+  await store.tx(() => {
     for (const c of store.all('classes')) {
       if (c.status !== 'active' || !c.teacherId) continue;
       const k = store.find('courses', c.course); if (!k) continue;
@@ -355,7 +355,7 @@ export const ACTIONS = {
   } }
 };
 
-export function runAction(store, user, today, name, args) {
+export async function runAction(store, user, today, name, args) {
   const def = Object.prototype.hasOwnProperty.call(ACTIONS, name) ? ACTIONS[name] : null;
   need(def, 'Unknown action.', 404);
   need(def.roles.includes(user.role), 'You do not have permission to do that.', 403);

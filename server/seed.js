@@ -19,7 +19,7 @@ export const DEMO_USERS = [
   { username: 'zainab', name: 'Zainab H.', role: 'student', studentId: 'zainab' }
 ];
 
-export function seed(store, today, password) {
+export async function seed(store, today, password) {
   const shift = Math.floor(diffDays(REF, today) / 7) * 7;
   const D = s => addDays(s, shift);
   const T0 = D(REF);
@@ -191,7 +191,7 @@ export function seed(store, today, password) {
     });
   })();
 
-  store.tx(() => {
+  await store.tx(() => {
     const put = (c, list) => list.forEach(o => store.put(c, o));
     put('courses', S.courses.map(c => ({ id: c.code, ...c })));
     put('subjects', S.subjects.map(s => ({ id: s.key, ...s })));

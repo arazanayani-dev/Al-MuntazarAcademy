@@ -265,3 +265,4 @@ tbody tr:hover{background:color-mix(in srgb,var(--accent) 4%,transparent)}
 .login .theme-btn.on-login{position:absolute;top:16px;right:16px;z-index:1;min-height:40px;padding:0 14px;border:1px solid rgba(243,195,90,.7);border-radius:10px;background:rgba(255,255,255,.1);color:#fff;font-weight:600;cursor:pointer}
 .login .theme-btn.on-login:hover{background:rgba(255,255,255,.2)}
 @media (max-width:600px){.acct .theme-btn span{display:none}.acct .theme-btn{padding:0 9px}}
+.note.warn-note{background:var(--warn-tint);color:var(--warn-ink)}

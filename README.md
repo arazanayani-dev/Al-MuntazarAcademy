@@ -50,7 +50,7 @@ All sample accounts use the password **`almuntazar123`** (set `SEED_PASSWORD` be
 | --- | --- |
 | `npm start` | Starts the server. |
 | `npm run dev` | Starts the server and restarts it when a file changes. |
-| `npm test` | Runs the server tests. |
+| `npm test` | Runs the server tests. Set `TEST_DATABASE_URL` to run them against Postgres too. |
 | `npm run seed -- --reset` | Wipes the database and loads the sample data again. |
 
 ### Settings
@@ -58,25 +58,35 @@ All sample accounts use the password **`almuntazar123`** (set `SEED_PASSWORD` be
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `PORT` | `3000` | Port to listen on. |
-| `DATA_DIR` | `./data` | Where the database (`academy.db`) and uploaded files are kept. Back this folder up. |
+| `DATABASE_URL` or `POSTGRES_URL` | (none) | A Postgres connection string. When set, records are kept in Postgres instead of the local file. Vercel sets this when you connect Neon. |
+| `DATA_DIR` | `./data` | Where the local database (`academy.db`) and uploaded files are kept when no Postgres is set. Back this folder up. |
+| `BLOB_READ_WRITE_TOKEN` | (none) | When set, uploaded files go to Vercel Blob. Vercel sets this when you connect Blob storage. |
 | `SEED` | on | Set to `0` to start with an empty database instead of the sample data. |
-| `SEED_PASSWORD` | `almuntazar123` | Password given to the sample accounts. |
+| `SEED_PASSWORD` | `almuntazar123` on your computer; **required** on Vercel | Password given to the sample accounts. |
+| `ADMIN_PASSWORD`, `ADMIN_USERNAME` | (none), `admin` | With `SEED=0`, creates the first super admin with this password on first start. |
 | `DEMO` | on | Set to `0` to hide the sample accounts and the sample-data notice. |
 | `APP_TZ` | `Asia/Kolkata` | Time zone used to decide today's date. Class times are entered in India time. |
 | `APP_TODAY` | (real date) | Pins today's date, for demonstrations. |
-| `TRUST_PROXY` | off | Set to `1` when running behind a reverse proxy that terminates HTTPS. |
+| `TRUST_PROXY` | off | Set to `1` when running behind a reverse proxy that terminates HTTPS. It is always on for Vercel. |
 
-With no sample data there are no accounts, so create the first super admin before starting:
+To start without sample data, set `SEED=0` and `ADMIN_PASSWORD` before the first start. You can then sign in as `admin` and create everyone else's accounts.
 
-```bash
-SEED=0 npm start   # once, to create the empty database, then stop it
-node --no-warnings -e "
-import('./server/db.js').then(async ({ Store }) => {
-  const { hashPassword } = await import('./server/auth.js');
-  const s = new Store('data/academy.db');
-  s.tx(() => s.put('users', { id: 'u-admin', username: 'admin', name: 'Administrator', role: 'super', password: hashPassword(process.argv[1]) }));
-});" 'choose-a-strong-password'
-```
+## Hosting on Vercel
+
+The repository is ready for Vercel: `vercel.json` serves `public/` as static files and runs everything else through `api/index.js`. Vercel wipes files between requests, so the records go to **Neon Postgres** and uploads to **Vercel Blob**, both added from inside Vercel.
+
+1. On https://vercel.com, sign in with GitHub. Click **Add New → Project** and **Import** `Al-MuntazarAcademy`. Leave the framework as **Other** and the build settings empty.
+2. Before you click Deploy, open **Environment Variables** and add `SEED_PASSWORD` with a strong password. Every sample account will use it. (Or add `SEED=0` and `ADMIN_PASSWORD` to start empty with one admin.) Then click **Deploy**.
+3. In the project, open **Storage → Create Database → Neon** (Postgres), and connect it to the project. This adds `DATABASE_URL`.
+4. Still in **Storage**, create a **Blob** store and connect it. This adds `BLOB_READ_WRITE_TOKEN`.
+5. Open **Deployments**, then on the latest one choose **⋯ → Redeploy**, so it picks up the database and storage.
+
+On the first visit, the app creates its table in Postgres and loads the sample data. Pushing to `main` deploys again automatically, and the data stays.
+
+Notes:
+- Until Neon is connected, the app still runs, but shows a red notice that changes can be lost.
+- Files uploaded on Vercel can be up to 4 MB. For larger books, upload them to Google Drive and paste the link.
+- Uploaded files are stored at long, unguessable Blob addresses. The app only gives the address to people allowed to see the material.
 
 ### Docker
 
@@ -90,7 +100,7 @@ docker run -p 3000:3000 -v academy-data:/app/data almuntazar-academy
 ```
 server/
   index.js      HTTP server: sign-in, data, actions, uploads, and the web app
-  db.js         SQLite store: one table of JSON records per collection
+  db.js         storage: JSON records in a local SQLite file, or in Postgres when hosted
   auth.js       scrypt password hashing and cookie sessions
   access.js     who may see what (teacher material access, training invitations)
   snapshot.js   the records each role receives; question answers never go to students
@@ -102,6 +112,7 @@ public/
   js/logic.js   values worked out from the records: attendance status, metrics, reading
   js/views/     one file per role, plus shared screens and dialogs
 shared/         date helpers and exam marking used by both server and browser
+api/index.js    the entry point Vercel runs (vercel.json routes requests to it)
 test/           server tests
 ```
 

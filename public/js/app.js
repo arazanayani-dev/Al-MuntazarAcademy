@@ -87,7 +87,8 @@ function loginHtml() {
       '<div class="field"><label for="li-p">Password</label><input id="li-p" name="password" type="password" autocomplete="current-password" required></div>' +
       (f.err ? '<p class="err" role="alert">' + esc(f.err) + '</p>' : '') +
       '<button class="btn primary wide" type="submit">Sign in</button></form>' +
-    (META.demoUsers.length ? '<div><div class="eyebrow" style="margin-bottom:6px">Sample accounts</div><p class="sub small" style="margin-bottom:8px">Pick one to fill in the username. The sample password is in the README.</p><div class="demo-list">' +
+    (META.setupMessage ? '<p class="err" role="alert">' + esc(META.setupMessage) + '</p>' : '') +
+    (META.demoUsers.length ? '<div><div class="eyebrow" style="margin-bottom:6px">Sample accounts</div><p class="sub small" style="margin-bottom:8px">Pick one to fill in the username. ' + (META.samplePasswordHint ? 'The sample password is in the README.' : 'Use the sample-account password set in the hosting settings.') + '</p><div class="demo-list">' +
       META.demoUsers.map(u => '<button type="button" data-act="pickUser" data-arg="' + esc(u.username) + '"><span class="b">' + esc(u.name) + '</span><span class="sub small">' + esc(u.username) + ' · ' + esc({ super: 'Super admin', academic: 'Academic team', locadmin: 'Location responsible', coord: 'Coordinator', teacher: 'Teacher', student: 'Student' }[u.role]) + '</span></button>').join('') + '</div></div>' : '') +
     '</section></main>';
 }
@@ -103,7 +104,7 @@ function render() {
   app.innerHTML =
     '<header class="bar"><div class="bar-in"><div class="brand">Almuntazar Academy</div>' +
     '<div class="acct"><span><span class="nm">' + esc(ME.name) + '</span><span class="role"> · ' + esc(ME.label) + '</span></span>' + themeBtn('theme-btn') + act('pwOpen', '', 'Password', '') + act('logout', '', 'Sign out', '') + '</div></div></header>' +
-    (META.demo ? '<div class="note"><div>Sample data is loaded · reset it with <code>npm run seed -- --reset</code></div></div>' : '') +
+    (META.temporary ? '<div class="note warn-note"><div>No permanent database is connected, so changes here can be lost at any time. Connect Neon Postgres in Vercel to keep them.</div></div>' : META.demo ? '<div class="note"><div>Sample data is loaded · reset it with <code>npm run seed -- --reset</code></div></div>' : '') +
     '<div class="shell' + (showNav ? ' has-nav' : '') + '">' + (showNav ? n.side : '') +
     '<main class="wrap' + (narrow ? ' narrow' : '') + '">' + body + '</main></div>' + (showNav ? n.bar : '');
   document.getElementById('modal-root').innerHTML = modalHtml();
@@ -186,6 +187,7 @@ const A = {
 
 /* ---------- form submissions ---------- */
 async function upload(file) {
+  if (META.maxUpload && file.size > META.maxUpload) throw new ApiError('That file is larger than ' + Math.round(META.maxUpload / 1048576) + ' MB. Upload it to Google Drive and paste the link instead.');
   const r = await fetch('/api/upload', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': file.type || 'application/octet-stream', 'X-Filename': encodeURIComponent(file.name) }, body: file });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new ApiError(j.error || 'The file could not be uploaded.');

@@ -4,21 +4,30 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createApp } from '../server/index.js';
-import { Store } from '../server/db.js';
+import { SqliteStore, PgStore } from '../server/db.js';
 import { ensureSessions } from '../server/actions.js';
 
 const PW = 'almuntazar123';
-let server, base, store, dir;
+let server, base, dir, provider;
+/* Set TEST_DATABASE_URL to run the same tests against Postgres (the table is emptied first). */
+const PG = process.env.TEST_DATABASE_URL || '';
+const db = () => provider.get();
 
 before(async () => {
   process.env.SEED_PASSWORD = PW;
   dir = fs.mkdtempSync(path.join(os.tmpdir(), 'academy-test-'));
-  store = new Store(':memory:');
-  const app = createApp({ store, dataDir: dir, today: () => '2026-10-12' });
+  let app;
+  if (PG) {
+    const pool = await PgStore.connect(PG); await pool.query('TRUNCATE docs'); await pool.end();
+    app = await createApp({ databaseUrl: PG, dataDir: dir, today: () => '2026-10-12' });
+  } else {
+    app = await createApp({ store: await SqliteStore.open(':memory:'), dataDir: dir, today: () => '2026-10-12' });
+  }
+  provider = app.locals.provider;
   await new Promise(r => { server = app.listen(0, r); });
   base = 'http://localhost:' + server.address().port;
 });
-after(() => { server.close(); fs.rmSync(dir, { recursive: true, force: true }); });
+after(async () => { server.close(); if (provider.pool) await provider.pool.end(); fs.rmSync(dir, { recursive: true, force: true }); });
 
 async function login(username, password = PW) {
   const r = await fetch(base + '/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
@@ -55,6 +64,7 @@ test('actions are refused outside a role or scope', async () => {
   const z = await login('zainab');
   assert.equal((await z.act('publish', { key: 'MUM-BAS-003|2' })).status, 403);
   const t = await login('maryam');
+  const store = await db();
   const other = store.all('sessions').find(x => x.classId === 'MUM-INR-002' && !x.logged);
   assert.equal((await t.act('logSave', { sid: other.id, held: true, att: {} })).status, 403);
   const co = await login('sabiha');
@@ -63,9 +73,11 @@ test('actions are refused outside a role or scope', async () => {
 
 test('a teacher logs a session once, with attendance', async () => {
   const t = await login('maryam');
+  let store = await db();
   const x = store.all('sessions').find(s => s.classId === 'MUM-BAS-003' && !s.logged);
   const r = await t.act('logSave', { sid: x.id, held: true, att: { fatimar: 'a', sakinam: 'e' }, covered: { b: true } });
   assert.equal(r.status, 200);
+  store = await db();
   const saved = store.find('sessions', x.id);
   assert.equal(saved.logged, true);
   assert.equal(saved.att.fatimar, 'a');
@@ -80,6 +92,7 @@ test('exams are marked on the server and can be taken once', async () => {
   const st = await z.act('examStart', { id: 'BAS-2-b' });
   assert.equal(st.status, 200);
   const { attemptId, qs } = st.body.result;
+  let store = await db();
   for (const q of qs) { assert.equal(q.correct, undefined); assert.equal(q.answers, undefined); }
   const att = store.find('attempts', attemptId);
   const ans = att.qids.map((id, i) => {
@@ -89,6 +102,7 @@ test('exams are marked on the server and can be taken once', async () => {
     return q.correct;
   });
   assert.equal((await z.act('examSubmit', { attemptId, ans })).status, 200);
+  store = await db();
   const res = store.all('results').find(r => r.sid === 'zainab' && r.sem === 2 && r.sub === 'b');
   assert.equal(res.pct, 100);
   assert.equal((await z.act('examStart', { id: 'BAS-2-b' })).status, 400);
@@ -96,17 +110,19 @@ test('exams are marked on the server and can be taken once', async () => {
   assert.equal(d.results.find(r => r.sem === 2 && r.sub === 'b').pct, null, 'unpublished marks stay hidden');
 });
 
-test('scheduled sessions appear once their date has passed', () => {
+test('scheduled sessions appear once their date has passed', async () => {
+  let store = await db();
   const before = store.all('sessions').filter(x => x.classId === 'MUM-BAS-003').length;
-  ensureSessions(store, '2026-10-30');
+  await ensureSessions(store, '2026-10-30');
+  store = await db();
   const after = store.all('sessions').filter(x => x.classId === 'MUM-BAS-003');
   assert.equal(after.length, before + 3);
   assert.ok(after.slice(-3).every(x => !x.logged && x.held));
 });
 
 test('sample data is shifted to the install date in whole weeks', async () => {
-  const s = new Store(':memory:');
-  createApp({ store: s, dataDir: dir, today: () => '2026-11-04' });
+  const s = await SqliteStore.open(':memory:');
+  await createApp({ store: s, dataDir: dir, today: () => '2026-11-04' });
   const loc = s.find('locations', 'MUM');
   assert.equal(loc.nextCall, '2026-11-02');
 });
