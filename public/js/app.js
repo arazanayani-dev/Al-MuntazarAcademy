@@ -51,6 +51,22 @@ async function loadData() {
   setSession(j.me, j.today, j.data);
 }
 
+/* ---------- light and dark ---------- */
+const themeNow = () => document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+function themeBtn(cl) {
+  const next = themeNow() === 'dark' ? 'light' : 'dark';
+  return '<button type="button" class="' + cl + '" data-act="theme" aria-label="Switch to ' + next + ' mode" title="Switch to ' + next + ' mode">' + icon(next === 'dark' ? 'moon' : 'sun') + '<span>' + (next === 'dark' ? 'Dark' : 'Light') + '</span></button>';
+}
+function setTheme(t, save) {
+  document.documentElement.setAttribute('data-theme', t);
+  if (save) { try { localStorage.setItem('am-theme', t); } catch { /* private mode: choice lasts this visit */ } }
+}
+/* Until someone picks, follow the computer's own setting as it changes */
+if (window.matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+  let saved = null; try { saved = localStorage.getItem('am-theme'); } catch { /* ignore */ }
+  if (!saved) { setTheme(e.matches ? 'dark' : 'light', false); render(); }
+});
+
 /* ---------- rendering ---------- */
 function navHtml() {
   const tabs = TABS[ME.role]; const cur = S.tab || tabs[0][0];
@@ -65,7 +81,7 @@ function navHtml() {
 
 function loginHtml() {
   const f = S.login || (S.login = { username: '', err: '' });
-  return '<main class="login"><section class="card"><div class="brandbig">Almuntazar Academy</div><h1 style="text-align:center;font-size:20px">Sign in</h1>' +
+  return '<main class="login">' + themeBtn('theme-btn on-login') + '<section class="card"><div class="brandbig">Almuntazar Academy</div><h1 style="text-align:center;font-size:20px">Sign in</h1>' +
     '<form data-form="login" style="display:flex;flex-direction:column;gap:12px">' +
       '<div class="field"><label for="li-u">Username</label><input id="li-u" name="username" autocomplete="username" autocapitalize="off" spellcheck="false" value="' + esc(f.username) + '" required></div>' +
       '<div class="field"><label for="li-p">Password</label><input id="li-p" name="password" type="password" autocomplete="current-password" required></div>' +
@@ -86,7 +102,7 @@ function render() {
   try { body = fn(); } catch (e) { console.error(e); body = '<section class="card"><p class="err">This page could not be shown.</p>' + act('nav', TABS[ME.role][0][0], 'Go to the first page') + '</section>'; }
   app.innerHTML =
     '<header class="bar"><div class="bar-in"><div class="brand">Almuntazar Academy</div>' +
-    '<div class="acct"><span><span class="nm">' + esc(ME.name) + '</span><span class="role"> · ' + esc(ME.label) + '</span></span>' + act('pwOpen', '', 'Password', '') + act('logout', '', 'Sign out', '') + '</div></div></header>' +
+    '<div class="acct"><span><span class="nm">' + esc(ME.name) + '</span><span class="role"> · ' + esc(ME.label) + '</span></span>' + themeBtn('theme-btn') + act('pwOpen', '', 'Password', '') + act('logout', '', 'Sign out', '') + '</div></div></header>' +
     (META.demo ? '<div class="note"><div>Sample data is loaded · reset it with <code>npm run seed -- --reset</code></div></div>' : '') +
     '<div class="shell' + (showNav ? ' has-nav' : '') + '">' + (showNav ? n.side : '') +
     '<main class="wrap' + (narrow ? ' narrow' : '') + '">' + body + '</main></div>' + (showNav ? n.bar : '');
@@ -103,6 +119,7 @@ function resetUi() { Object.assign(S, { view: 'home', p: {}, modal: null, draft:
 const A = {
   nav(v) { S.back = null; go(v); },
   more() { S.more = !S.more; },
+  theme() { setTheme(themeNow() === 'dark' ? 'light' : 'dark', true); },
   pickUser(u) { S.login = { username: u, err: '' }; setTimeout(() => { const p = document.getElementById('li-p'); if (p) p.focus(); }, 0); },
   async logout() { await api('POST', '/api/logout'); clearSession(); resetUi(); },
   rdWeek(w) { S.form.rd.week = w; },
