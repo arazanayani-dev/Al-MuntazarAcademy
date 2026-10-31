@@ -86,7 +86,7 @@ function render() {
   try { body = fn(); } catch (e) { console.error(e); body = '<section class="card"><p class="err">This page could not be shown.</p>' + act('nav', TABS[ME.role][0][0], 'Go to the first page') + '</section>'; }
   app.innerHTML =
     '<header class="bar"><div class="bar-in"><div class="brand">Almuntazar Academy</div>' +
-    '<div class="acct"><span><span class="nm">' + esc(ME.name) + '</span> · ' + esc(ME.label) + '</span>' + act('pwOpen', '', 'Password', '') + act('logout', '', 'Sign out', '') + '</div></div></header>' +
+    '<div class="acct"><span><span class="nm">' + esc(ME.name) + '</span><span class="role"> · ' + esc(ME.label) + '</span></span>' + act('pwOpen', '', 'Password', '') + act('logout', '', 'Sign out', '') + '</div></div></header>' +
     (META.demo ? '<div class="note"><div>Sample data is loaded · reset it with <code>npm run seed -- --reset</code></div></div>' : '') +
     '<div class="shell' + (showNav ? ' has-nav' : '') + '">' + (showNav ? n.side : '') +
     '<main class="wrap' + (narrow ? ' narrow' : '') + '">' + body + '</main></div>' + (showNav ? n.bar : '');
