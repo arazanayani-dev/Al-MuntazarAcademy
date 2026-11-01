@@ -4,8 +4,8 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { addDays, weekStart, isIsoDate, DOWL, pd } from '../shared/dates.js';
-import { qScore } from '../shared/scoring.js';
+import { addDays, weekStart, isIsoDate, DOWL, pd } from '../public/shared/dates.js';
+import { qScore } from '../public/shared/scoring.js';
 import { canSeeMaterial, invited } from './access.js';
 import { hashPassword, verifyPassword } from './auth.js';
 

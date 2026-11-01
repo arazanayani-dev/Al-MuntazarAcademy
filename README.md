@@ -111,7 +111,7 @@ public/
   js/app.js     sign-in, navigation, rendering, buttons and forms
   js/logic.js   values worked out from the records: attendance status, metrics, reading
   js/views/     one file per role, plus shared screens and dialogs
-shared/         date helpers and exam marking used by both server and browser
+public/shared/  date helpers and exam marking used by both server and browser
 api/index.js    the entry point Vercel runs (vercel.json routes requests to it)
 test/           server tests
 ```

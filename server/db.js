@@ -104,7 +104,7 @@ export class PgStore extends Store {
   static async connect(url) {
     const { default: pg } = await import('pg');
     const local = /@(localhost|127\.0\.0\.1)[:/]/.test(url);
-    const pool = new pg.Pool({ connectionString: url, max: 3, idleTimeoutMillis: 10000, ssl: local || /sslmode=disable/.test(url) ? false : { rejectUnauthorized: false } });
+    const pool = new pg.Pool({ connectionString: url, max: 3, idleTimeoutMillis: 10000, connectionTimeoutMillis: 15000, query_timeout: 25000, ssl: local || /sslmode=disable/.test(url) ? false : { rejectUnauthorized: false } });
     await pool.query(`CREATE TABLE IF NOT EXISTS docs (
       seq BIGSERIAL, coll TEXT NOT NULL, id TEXT NOT NULL, data JSONB NOT NULL, PRIMARY KEY (coll, id))`);
     return pool;
@@ -136,11 +136,24 @@ export class PgStore extends Store {
       client.release();
     }
   }
-  /* Runs fn while holding a database-wide lock, so two starting copies of the app don't both load sample data */
+  /* Runs fn while holding a database-wide lock, so two starting copies of the app don't both load sample data.
+     The lock belongs to a transaction, which also works through connection poolers such as Neon's,
+     and gives up after 20 seconds rather than waiting forever. */
   static async withLock(pool, fn) {
     const client = await pool.connect();
-    try { await client.query('SELECT pg_advisory_lock(424242)'); return await fn(); }
-    finally { await client.query('SELECT pg_advisory_unlock(424242)').catch(() => {}); client.release(); }
+    try {
+      await client.query('BEGIN');
+      await client.query("SET LOCAL lock_timeout = '20s'");
+      await client.query('SELECT pg_advisory_xact_lock(424242)');
+      const r = await fn();
+      await client.query('COMMIT');
+      return r;
+    } catch (e) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw e;
+    } finally {
+      client.release();
+    }
   }
 }
 

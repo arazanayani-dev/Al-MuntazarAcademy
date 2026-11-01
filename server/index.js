@@ -181,7 +181,6 @@ export async function createApp(opts = {}) {
     res.sendFile(path.join(uploads, f.id));
   });
 
-  app.use('/shared', express.static(path.join(root, 'shared')));
   app.use(express.static(path.join(root, 'public')));
   app.get(/^\/(?!api\/|files\/).*/, (req, res) => res.sendFile(path.join(root, 'public', 'index.html')));
 

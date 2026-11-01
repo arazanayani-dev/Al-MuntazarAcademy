@@ -34,7 +34,12 @@ let busy = false;
 /* ---------- server ---------- */
 class ApiError extends Error {}
 async function api(method, url, body) {
-  const r = await fetch(url, { method, credentials: 'same-origin', headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
+  /* Give up after 30 seconds rather than leaving the page waiting forever */
+  const ctl = new AbortController(); const timer = setTimeout(() => ctl.abort(), 30000);
+  let r;
+  try { r = await fetch(url, { method, credentials: 'same-origin', headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined, signal: ctl.signal }); }
+  catch (e) { throw new ApiError(e.name === 'AbortError' ? 'The server took too long to answer.' : 'Could not reach the server. Check your internet connection.'); }
+  finally { clearTimeout(timer); }
   let j = {}; try { j = await r.json(); } catch { /* not JSON */ }
   if (r.status === 401 && url !== '/api/login') { clearSession(); render(); throw new ApiError('Please sign in again.'); }
   if (!r.ok) throw new ApiError(j.error || 'Something went wrong. Please try again.');
@@ -259,8 +264,15 @@ document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && S.modal)
 window.addEventListener('beforeunload', ev => { if (S.exam || S.draft) { ev.preventDefault(); ev.returnValue = ''; } });
 
 /* ---------- start ---------- */
+function startupError(msg) {
+  document.getElementById('app').innerHTML = '<main class="login"><section class="card"><div class="brandbig">Almuntazar Academy</div>' +
+    '<h1 style="text-align:center;font-size:20px">The app could not start</h1><p class="err" role="alert">' + esc(msg) + '</p>' +
+    '<button class="btn primary wide" type="button" onclick="location.reload()">Try again</button></section></main>';
+}
 (async function boot() {
-  try { META = await api('GET', '/api/meta'); } catch { /* keep defaults */ }
+  window.__amStarted = true;
+  try { META = await api('GET', '/api/meta'); }
+  catch (e) { startupError(e.message); return; }
   if (META.signedIn) { try { await loadData(); go(TABS[ME.role][0][0]); } catch { clearSession(); } }
   render();
 })();

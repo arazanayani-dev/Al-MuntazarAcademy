@@ -4,7 +4,7 @@
   "outputDirectory": "public",
   "functions": {
     "api/index.js": {
-      "includeFiles": "{public,shared,server/data}/**",
+      "includeFiles": "{public,server/data}/**",
       "maxDuration": 30
     }
   },

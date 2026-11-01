@@ -1,7 +1,7 @@
 /* Sample data for a new installation, matching the original prototype.
    Dates are written as they were around Monday 12 Oct 2026 and shifted by whole weeks to the install date,
    so weekdays stay correct and the sample always looks recent. */
-import { addDays, diffDays, weekStart, pd } from '../shared/dates.js';
+import { addDays, diffDays, weekStart, pd } from '../public/shared/dates.js';
 import { hashPassword } from './auth.js';
 
 const REF = '2026-10-12';

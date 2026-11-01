@@ -22,5 +22,13 @@
 <div id="modal-root"></div>
 <div id="toast" class="toast" role="status" hidden></div>
 <script type="module" src="/js/app.js"></script>
+<script>
+/* If the app's scripts fail to load at all, say so instead of showing "Loading…" forever */
+setTimeout(function () {
+  if (window.__amStarted) return;
+  var el = document.getElementById('app');
+  if (el) el.innerHTML = '<div class="loading"><p><b>The app could not load.</b></p><p>Please check your internet connection and try again.</p><p><button class="btn primary" type="button" onclick="location.reload()">Try again</button></p></div>';
+}, 20000);
+</script>
 </body>
 </html>
