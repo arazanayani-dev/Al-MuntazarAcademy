@@ -62,8 +62,8 @@ All sample accounts use the password **`almuntazar123`** (set `SEED_PASSWORD` be
 | `DATA_DIR` | `./data` | Where the local database (`academy.db`) and uploaded files are kept when no Postgres is set. Back this folder up. |
 | `BLOB_READ_WRITE_TOKEN` | (none) | When set, uploaded files go to Vercel Blob. Vercel sets this when you connect Blob storage. |
 | `SEED` | on | Set to `0` to start with an empty database instead of the sample data. |
-| `SEED_PASSWORD` | `almuntazar123` on your computer; **required** on Vercel | Password given to the sample accounts. |
-| `ADMIN_PASSWORD`, `ADMIN_USERNAME` | (none), `admin` | With `SEED=0`, creates the first super admin with this password on first start. |
+| `SEED_PASSWORD` | `almuntazar123` on your computer; **required** on Vercel | Password for the sample accounts. If you change it, sample accounts whose password nobody has changed follow the new value on the next start. |
+| `ADMIN_PASSWORD`, `ADMIN_USERNAME` | (none), `admin` | When set, a super admin account with this username always exists and opens with this password, even if it was changed in the app. Use it to start empty (with `SEED=0`) or to get back in. Remove it once you have your own admin account. |
 | `DEMO` | on | Set to `0` to hide the sample accounts and the sample-data notice. |
 | `APP_TZ` | `Asia/Kolkata` | Time zone used to decide today's date. Class times are entered in India time. |
 | `APP_TODAY` | (real date) | Pins today's date, for demonstrations. |
