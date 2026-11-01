@@ -28,7 +28,7 @@ const VIEWS = {
   'student.home': viewStudentHome, 'student.exams': viewStudentExams, 'student.materials': viewStudentMaterials, 'student.profile': viewStudentProfile
 };
 const SHARED = { class: viewClass, marks: viewMarks, log: viewLog, exam: viewExamTake };
-let META = { demo: false, demoUsers: [] };
+let META = { demo: false };
 let busy = false;
 
 /* ---------- server ---------- */
@@ -93,9 +93,8 @@ function loginHtml() {
       '<div class="field"><label for="li-p">Password</label><input id="li-p" name="password" type="password" autocomplete="current-password" required></div>' +
       (f.err ? '<p class="err" role="alert">' + esc(f.err) + '</p>' : '') +
       '<button class="btn primary wide" type="submit">Sign in</button></form>' +
+    '<p class="sub small" style="text-align:center">Forgotten your password? Ask your academy administrator to reset it.</p>' +
     (META.setupMessage ? '<p class="err" role="alert">' + esc(META.setupMessage) + '</p>' : '') +
-    (META.demoUsers.length ? '<div><div class="eyebrow" style="margin-bottom:6px">Sample accounts</div><p class="sub small" style="margin-bottom:8px">Pick one to fill in the username. ' + (META.samplePasswordHint ? 'The sample password is in the README.' : 'Use the sample-account password set in the hosting settings.') + '</p><div class="demo-list">' +
-      META.demoUsers.map(u => '<button type="button" data-act="pickUser" data-arg="' + esc(u.username) + '"><span class="b">' + esc(u.name) + '</span><span class="sub small">' + esc(u.username) + ' · ' + esc({ super: 'Super admin', academic: 'Academic team', locadmin: 'Location responsible', coord: 'Coordinator', teacher: 'Teacher', student: 'Student' }[u.role]) + '</span></button>').join('') + '</div></div>' : '') +
     '</section></main>';
 }
 
@@ -127,7 +126,6 @@ const A = {
   nav(v) { S.back = null; go(v); },
   more() { S.more = !S.more; },
   theme() { setTheme(themeNow() === 'dark' ? 'light' : 'dark', true); },
-  pickUser(u) { S.login = { username: u, err: '' }; setTimeout(() => { const p = document.getElementById('li-p'); if (p) p.focus(); }, 0); },
   async logout() { await api('POST', '/api/logout'); clearSession(); resetUi(); },
   rdWeek(w) { S.form.rd.week = w; },
   toast(t) { toast(t); },

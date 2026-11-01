@@ -30,7 +30,7 @@ The first time it starts with an empty database, it loads the same sample data a
 
 ### Sample accounts
 
-All sample accounts use the password **`almuntazar123`** (set `SEED_PASSWORD` before the first start to choose another). The sign-in page lists them.
+All sample accounts use the password **`almuntazar123`** (set `SEED_PASSWORD` to choose another). The sign-in page does not list accounts, so use the usernames below.
 
 | Username | Person | Role |
 | --- | --- | --- |
@@ -64,7 +64,7 @@ All sample accounts use the password **`almuntazar123`** (set `SEED_PASSWORD` be
 | `SEED` | on | Set to `0` to start with an empty database instead of the sample data. |
 | `SEED_PASSWORD` | `almuntazar123` on your computer; **required** on Vercel | Password for the sample accounts. If you change it, sample accounts whose password nobody has changed follow the new value on the next start. |
 | `ADMIN_PASSWORD`, `ADMIN_USERNAME` | (none), `admin` | When set, a super admin account with this username always exists and opens with this password, even if it was changed in the app. Use it to start empty (with `SEED=0`) or to get back in. Remove it once you have your own admin account. |
-| `DEMO` | on | Set to `0` to hide the sample accounts and the sample-data notice. |
+| `DEMO` | on | Set to `0` to hide the sample-data notice shown when running on your own computer. |
 | `APP_TZ` | `Asia/Kolkata` | Time zone used to decide today's date. Class times are entered in India time. |
 | `APP_TODAY` | (real date) | Pins today's date, for demonstrations. |
 | `TRUST_PROXY` | off | Set to `1` when running behind a reverse proxy that terminates HTTPS. It is always on for Vercel. |

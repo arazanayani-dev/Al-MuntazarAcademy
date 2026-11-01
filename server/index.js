@@ -7,7 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SqliteStore, PgStore, databaseUrl } from './db.js';
-import { seed, DEMO_USERS } from './seed.js';
+import { seed } from './seed.js';
 import { currentUser, createSession, destroySession, verifyPassword, hashPassword } from './auth.js';
 import { snapshot } from './snapshot.js';
 import { runAction, ensureSessions, UserError, SAMPLE_PAPER } from './actions.js';
@@ -125,11 +125,10 @@ export async function createApp(opts = {}) {
 
   app.get('/api/meta', h(async (req, res) => {
     const store = req.store;
-    const demoUsers = demo ? DEMO_USERS.filter(u => { const x = store.all('users').find(y => y.username === u.username); return x && x.demo; }) : [];
     res.json({
-      demo: demo && store.all('users').some(u => u.demo), today: today(), signedIn: !!(await currentUser(store, req)),
-      demoUsers: demoUsers.map(u => ({ username: u.username, name: u.name, role: u.role })),
-      samplePasswordHint: !HOSTED, temporary, setupMessage, maxUpload
+      /* The sample-data notice is for running on your own computer only; the sign-in page never lists accounts */
+      demo: !HOSTED && demo && store.all('users').some(u => u.demo), today: today(), signedIn: !!(await currentUser(store, req)),
+      temporary, setupMessage, maxUpload
     });
   }));
 
