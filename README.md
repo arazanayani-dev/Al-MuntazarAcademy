@@ -128,7 +128,7 @@ test/           server tests
 These parts of the prototype are placeholders that need outside services or content:
 
 - **Sending email and WhatsApp.** Reminders, published results and training invitations are written to an `outbox` table. Connecting an email and WhatsApp provider to send them is the next step.
-- **Reading uploaded question papers.** *Import a question paper* reviews and imports the sample paper (`server/data/sample-paper.json`, read from `Tauheed_1_MCQ_paper_-_new.docx`). It does not yet read the yellow-highlighted answers from a newly uploaded Word file.
+- **Reading uploaded question papers.** *Import a question paper* reviews and imports the sample paper (`server/sample-paper.js`, read from `Tauheed_1_MCQ_paper_-_new.docx`). It does not yet read the yellow-highlighted answers from a newly uploaded Word file.
 - **Loading the syllabus chart from Excel.** The chart shows placeholder topics until the academy's Excel template is available. *Mark chart as loaded* switches on the placeholders for a semester.
 - **Moving a class to its next semester**, and re-exams after a fail.
 - **Recording who attended a training session.**

@@ -40,9 +40,10 @@ async function api(method, url, body) {
   try { r = await fetch(url, { method, credentials: 'same-origin', headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined, signal: ctl.signal }); }
   catch (e) { throw new ApiError(e.name === 'AbortError' ? 'The server took too long to answer.' : 'Could not reach the server. Check your internet connection.'); }
   finally { clearTimeout(timer); }
-  let j = {}; try { j = await r.json(); } catch { /* not JSON */ }
+  const text = await r.text().catch(() => '');
+  let j = {}; try { j = JSON.parse(text); } catch { /* not JSON, for example a hosting error page */ }
   if (r.status === 401 && url !== '/api/login') { clearSession(); render(); throw new ApiError('Please sign in again.'); }
-  if (!r.ok) throw new ApiError(j.error || 'Something went wrong. Please try again.');
+  if (!r.ok) throw new ApiError(j.error || ('The server answered ' + r.status + (text ? ': ' + text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 300) : '') + '. Please try again.'));
   return j;
 }
 async function call(name, args) {

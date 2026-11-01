@@ -1,16 +1,13 @@
 /* Every change the app can make. Each action names the roles allowed to call it, checks the record
    belongs to the caller's location, class or teaching load, validates its input, then writes to the store. */
 import crypto from 'node:crypto';
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { addDays, weekStart, isIsoDate, DOWL, pd } from '../public/shared/dates.js';
 import { qScore } from '../public/shared/scoring.js';
 import { canSeeMaterial, invited } from './access.js';
 import { hashPassword, verifyPassword } from './auth.js';
 
-const here = path.dirname(fileURLToPath(import.meta.url));
-export const SAMPLE_PAPER = JSON.parse(fs.readFileSync(path.join(here, 'data', 'sample-paper.json'), 'utf8'));
+import SAMPLE_PAPER from './sample-paper.js';
+export { SAMPLE_PAPER };
 
 export class UserError extends Error { constructor(msg, status) { super(msg); this.status = status || 400; } }
 const need = (cond, msg, status) => { if (!cond) throw new UserError(msg, status); };
