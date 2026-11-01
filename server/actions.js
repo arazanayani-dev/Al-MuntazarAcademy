@@ -333,7 +333,7 @@ export const ACTIONS = {
   userReset: { roles: ['super'], run(ctx, a) {
     const u = ctx.store.find('users', str(a.id)); need(u, 'User not found.', 404);
     const pw = String(a.password || ''); need(pw.length >= 8, 'The password needs at least 8 characters.');
-    u.password = hashPassword(pw); ctx.store.put('users', u);
+    u.password = hashPassword(pw); u.demo = false; ctx.store.put('users', u);
     ctx.store.all('authSessions').filter(s => s.userId === u.id).forEach(s => ctx.store.del('authSessions', s.id));
     return { toast: 'Password reset for ' + u.name };
   } },

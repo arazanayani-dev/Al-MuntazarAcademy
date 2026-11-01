@@ -126,3 +126,27 @@ test('sample data is shifted to the install date in whole weeks', async () => {
   const loc = s.find('locations', 'MUM');
   assert.equal(loc.nextCall, '2026-11-02');
 });
+
+test('sample accounts follow a changed SEED_PASSWORD, and ADMIN_PASSWORD always opens the admin account', async () => {
+  const { verifyPassword } = await import('../server/auth.js');
+  const s = await SqliteStore.open(':memory:');
+  const saved = { seed: process.env.SEED_PASSWORD, admin: process.env.ADMIN_PASSWORD };
+  try {
+    process.env.SEED_PASSWORD = 'first-password';
+    await createApp({ store: s, dataDir: dir, today: () => '2026-10-12' });
+    assert.ok(verifyPassword('first-password', s.all('users').find(u => u.username === 'abbas').password));
+
+    /* the password was changed in the hosting settings, pasted with spaces and quotes */
+    process.env.SEED_PASSWORD = '  "second-password" ';
+    process.env.ADMIN_PASSWORD = ' admin-password-1 ';
+    await createApp({ store: s, dataDir: dir, today: () => '2026-10-12' });
+    const abbas = s.all('users').find(u => u.username === 'abbas');
+    assert.ok(verifyPassword('second-password', abbas.password));
+    const admin = s.all('users').find(u => u.username === 'admin');
+    assert.equal(admin.role, 'super');
+    assert.ok(verifyPassword('admin-password-1', admin.password));
+  } finally {
+    if (saved.seed === undefined) delete process.env.SEED_PASSWORD; else process.env.SEED_PASSWORD = saved.seed;
+    if (saved.admin === undefined) delete process.env.ADMIN_PASSWORD; else process.env.ADMIN_PASSWORD = saved.admin;
+  }
+});

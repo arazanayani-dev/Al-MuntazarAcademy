@@ -48,21 +48,41 @@ export async function createApp(opts = {}) {
   const maxUpload = HOSTED ? 4 * 1024 * 1024 : 50 * 1024 * 1024;
   let setupMessage = '';
 
-  /* First start: load the sample data, or create the first admin, once. */
+  /* Passwords set in the hosting settings, without the spaces or quote marks that often come with copy and paste */
+  const envPassword = name => String(process.env[name] || '').trim().replace(/^(["'])(.*)\1$/, '$2');
+  const seedPassword = envPassword('SEED_PASSWORD');
+  const adminPassword = envPassword('ADMIN_PASSWORD');
+  const adminUsername = (process.env.ADMIN_USERNAME || 'admin').trim().toLowerCase();
+
+  /* Every start: load the sample data or create the first admin if the database is empty, then make sure
+     the passwords in the hosting settings work: sample accounts nobody has changed follow SEED_PASSWORD,
+     and ADMIN_PASSWORD always opens the admin account (a way back in if a password is lost). */
   async function prepare() {
     const run = async () => {
       const s = await provider.get();
       if (s.isEmpty()) {
         const seedOn = opts.seed !== false && process.env.SEED !== '0';
-        const pw = process.env.SEED_PASSWORD || (HOSTED ? '' : 'almuntazar123');
+        const pw = seedPassword || (HOSTED ? '' : 'almuntazar123');
         if (seedOn && pw) await seed(s, today(), pw);
-        else if (process.env.ADMIN_PASSWORD) {
-          await s.tx(() => s.put('users', { id: 'u-admin', username: (process.env.ADMIN_USERNAME || 'admin').toLowerCase(), name: 'Administrator', role: 'super', password: hashPassword(process.env.ADMIN_PASSWORD) }));
-        } else {
+        else if (!adminPassword) {
           setupMessage = seedOn
             ? 'Almost there: set SEED_PASSWORD in the hosting settings (the password for the sample accounts), then redeploy.'
             : 'Almost there: set ADMIN_PASSWORD in the hosting settings to create the first admin account, then redeploy.';
           return;
+        }
+      }
+      if (seedPassword) {
+        const stale = s.all('users').filter(u => u.demo);
+        if (stale.length && !verifyPassword(seedPassword, stale[0].password)) {
+          const hash = hashPassword(seedPassword);
+          await s.tx(() => stale.forEach(u => { u.password = hash; s.put('users', u); }));
+        }
+      }
+      if (adminPassword) {
+        const a = s.all('users').find(u => u.username === adminUsername);
+        if (!a) await s.tx(() => s.put('users', { id: 'u-admin', username: adminUsername, name: 'Administrator', role: 'super', password: hashPassword(adminPassword) }));
+        else if (!verifyPassword(adminPassword, a.password) || a.disabled || a.role !== 'super') {
+          await s.tx(() => { a.password = hashPassword(adminPassword); a.disabled = false; a.role = 'super'; s.put('users', a); });
         }
       }
       setupMessage = '';
