@@ -7,7 +7,7 @@ import path from 'node:path';
 export const COLLECTIONS = [
   'users', 'authSessions', 'locations', 'courses', 'subjects', 'teachers', 'classes', 'students',
   'sessions', 'results', 'exams', 'questions', 'traditions', 'calls', 'actions', 'regs',
-  'materials', 'shares', 'trainings', 'reading', 'attempts', 'files', 'outbox'
+  'materials', 'shares', 'trainings', 'reading', 'attempts', 'files', 'outbox', 'promotions', 'readiness'
 ];
 
 export class Store {

@@ -9,10 +9,11 @@ It is built from the clickable prototype, kept in [`docs/prototype.html`](docs/p
 | Role | What they do |
 | --- | --- |
 | **Super admin** | Sees every location side by side. Adds locations, course types, subjects, teachers and user accounts. Runs reports, including a custom report builder with CSV download. |
-| **Academic team** | Maintains the syllabus chart, the question bank (six question types, plus importing a question paper), exam windows, the materials library, weekly reading targets, teacher access levels, teacher training and the traditions library. |
-| **Location responsible** (primary or secondary) | Runs one location: creates classes and assigns teachers, chases unlogged sessions, reviews and publishes results, records the weekly coordination call and tracks action items. |
+| **Academic content creator** | Adds and edits academic content: the question bank (six question types, plus importing a question paper), the materials library, teacher training and the traditions library; marks syllabus charts as loaded. Every addition or change waits for the approver. |
+| **Academic content approver** | Approves each item the creator submits, or sends it back with a note. Nothing reaches teachers or students until it is approved. Also sets weekly reading targets and teacher access levels. |
+| **Location responsible** (primary or secondary) | Runs one location: creates classes and assigns teachers, opens each class's exam window, chases unlogged sessions, reviews and publishes results, records the weekly coordination call and tracks action items. |
 | **Coordinator** | Allocates new registrations to classes, creates classes (which wait for a teacher to be assigned), and follows their own action items. |
-| **Teacher** | Sees the next class and this week's lesson, logs sessions and attendance, sees students who need attention, shares materials with a class, and replies to training invitations. |
+| **Teacher** | Sees the next class and this week's lesson, logs sessions and attendance, opens their class's exam window, sees students who need attention, shares materials with a class, and replies to training invitations. |
 | **Student** | Sees the next class in their own time zone, logs weekly reading, takes exams, sees published results and certificates, and opens shared materials. A student who is their class's **class assistant** can also log sessions. |
 
 ## Running it
@@ -30,19 +31,20 @@ The first time it starts with an empty database, it loads the same sample data a
 
 ### Sample accounts
 
-All sample accounts use the password **`almuntazar123`** (set `SEED_PASSWORD` before the first start to choose another). The sign-in page lists them.
+All sample accounts use the password **`almuntazar123`** (set `SEED_PASSWORD` before the first start to choose another).
 
 | Username | Person | Role |
 | --- | --- | --- |
 | `abbas` | Br. Abbas | Super admin |
-| `tahera` | Sr. Tahera | Academic team |
+| `rubab` | Sr. Rubab | Academic content creator |
+| `tahera` | Sr. Tahera | Academic content approver |
 | `jafar` | Br. Jafar | Primary responsible, Mumbai |
 | `kazim` | Br. Kazim | Secondary responsible, Mumbai |
 | `sabiha` | Sr. Sabiha | Coordinator, Mumbai |
 | `maryam` | Sr. Maryam | Teacher |
 | `zainab` | Zainab H. | Student and class assistant |
 
-**Before going live:** reset every sample password under *User accounts*, or start with an empty database (`SEED=0`) and create the real accounts. To hide the sample-account list on the sign-in page, set `DEMO=0`.
+**Before going live:** reset every sample password under *User accounts*, or start with an empty database (`SEED=0`) and create the real accounts.
 
 ### Commands
 
@@ -61,7 +63,6 @@ All sample accounts use the password **`almuntazar123`** (set `SEED_PASSWORD` be
 | `DATA_DIR` | `./data` | Where the database (`academy.db`) and uploaded files are kept. Back this folder up. |
 | `SEED` | on | Set to `0` to start with an empty database instead of the sample data. |
 | `SEED_PASSWORD` | `almuntazar123` | Password given to the sample accounts. |
-| `DEMO` | on | Set to `0` to hide the sample accounts and the sample-data notice. |
 | `APP_TZ` | `Asia/Kolkata` | Time zone used to decide today's date. Class times are entered in India time. |
 | `APP_TODAY` | (real date) | Pins today's date, for demonstrations. |
 | `TRUST_PROXY` | off | Set to `1` when running behind a reverse proxy that terminates HTTPS. |

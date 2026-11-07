@@ -2,6 +2,7 @@
 import { S, TODAY, ME } from './state.js';
 import { addDays, pd, ft, fd, fdl, weekStart, diffDays } from '/shared/dates.js';
 import { chip } from './ui.js';
+import { chapterList, subjectMark, markParts } from '/shared/grading.js';
 
 export const BELIEF = ['Tauheed', 'Adl', 'Nabuwwat', 'Imamat', 'Maad'];
 export const INTRO = ['What is Religion?', 'Misunderstandings about Religion', "Imam Ali's wager", 'Necessary Qualities of a Religion', 'Test and certificate'];
@@ -16,14 +17,62 @@ export const stu = id => S.students.find(s => s.id === id);
 export const loc = code => S.locations.find(l => l.code === code);
 export const subName = k => { const s = S.subjects.find(s => s.key === k); return s ? s.name : k; };
 export const group = g => g === 'F' ? 'Sisters' : 'Brothers';
-export const classSessions = cid => S.sessions.filter(x => x.classId === cid).sort((a, b) => a.date < b.date ? -1 : 1);
+/* Every session a class has had, across semesters (for date-range reports). */
+export const allSessions = cid => S.sessions.filter(x => x.classId === cid).sort((a, b) => a.date < b.date ? -1 : 1);
+/* When the class (or its current semester) starts; classes made before start dates were recorded count from their first session. */
+export const startOf = c => c.startOn || (allSessions(c.id).filter(x => (x.sem || c.sem) === c.sem)[0] || {}).date || '';
+/* Sessions of the class's current semester. Sessions without a semester belong to the current one. */
+export const classSessions = cid => { const c = cls(cid); return allSessions(cid).filter(x => !c || (x.sem || c.sem) === c.sem); };
+/* A class that has completed its course or been closed takes no more students and drops out of the figures. */
+export const ended = c => c.status === 'completed' || c.status === 'closed';
 export const classStudents = cid => S.students.filter(s => s.classId === cid);
 export const weeksDone = cid => classSessions(cid).filter(x => x.held).length;
-export function teacherName(id) { const t = S.teachers.find(t => t.id === id); return t ? t.name : ''; }
+/* Academic content is used once approved; records from before approvals have no status and count as approved. */
+export const approved = x => !x.status || x.status === 'approved';
+export const STATUS = { pending: ['gold', 'Waiting for approval'], rejected: ['warn', 'Sent back'] };
+export const statusChip = x => x.status && STATUS[x.status] ? chip(STATUS[x.status][0], STATUS[x.status][1]) : '';
+/* A class's exam window for its current semester: 'open', 'upcoming', 'over' or '' (none). */
+export function examState(c) {
+  const e = c && c.exam; if (!e || e.sem !== c.sem) return '';
+  if (e.closed) return 'over';
+  return TODAY < e.from ? 'upcoming' : TODAY > e.to ? 'over' : 'open';
+}
+export const examSubs = () => S.subjects.filter(s => s.exam);
+/* approved questions for each examined subject of this course and semester */
+export const paperCounts = (co, sem) => examSubs().map(s => ({ s, n: (S.qcount || {})[co + '-' + sem + '-' + s.key] || 0 }));
+/* What still stands between a class and moving to its next semester. */
+export function semReady(c) {
+  const k = course(c.course); const held = weeksDone(c.id);
+  return { held, weeks: k.weeks, pub: !!S.published[c.id + '|' + c.sem], last: c.sem >= k.sems, ready: c.status === 'active' && held >= k.weeks && !!S.published[c.id + '|' + c.sem] };
+}
+/* Course types are levels in list order. A teacher takes classes at their level and below; no level means no limit. */
+export const levelRank = code => S.courses.findIndex(c => c.code === code);
+/* only someone promoted to a teaching level can be assigned, at that level or below */
+export const canTeach = (t, co) => !!t.level && levelRank(t.level) >= levelRank(co);
+/* Semesters of a course a person has not yet passed (50% or more in each examined subject, best attempt,
+   published results). Promotion to teach a course needs none missing. */
+export function notYetPassed(sid, code) {
+  const k = course(code); const subs = S.subjects.filter(s => s.exam);
+  const res = S.results.filter(r => r.sid === sid && r.course === code && r.pct != null && S.published[r.cid + '|' + r.sem]);
+  const out = []; for (let sem = 1; sem <= k.sems; sem++) if (!subs.every(s => res.some(r => r.sem === sem && r.sub === s.key && r.pct >= 50))) out.push(sem);
+  return out;
+}
+/* who can be nominated to teach a level: a student of a higher level, or someone who has passed all of that level */
+export function canNominate(s, code) {
+  const c = s.classId && S.classes.find(x => x.id === s.classId);
+  return (!!c && levelRank(c.course) > levelRank(code)) || !notYetPassed(s.id, code).length;
+}
+/* the teacher record promoted from a person, if any */
+export const teacherOfPerson = sid => S.teachers.find(t => t.sid === sid);
+export const levelLabel = t => t.level ? 'Up to ' + course(t.level).name : 'Level not set';
+export const levelOpts = () => S.courses.map(c => [c.code, c.name]);
+/* Teachers who can take a class of this group and course, closest level first. */
+export const assignable = (g, co) => S.teachers.filter(t => t.sid && t.g === g && canTeach(t, co)).sort((a, b) => (a.level ? levelRank(a.level) : 99) - (b.level ? levelRank(b.level) : 99) || a.name.localeCompare(b.name));
+export function teacherName(id) { const t = S.teachers.find(t => t.id === id); return t ? teacherTitle(t) : ''; }
 export function nextDate(c) {
   const ss = classSessions(c.id); let d;
   if (ss.length) d = addDays(ss[ss.length - 1].date, 7);
-  else { d = TODAY; while (pd(d).getDay() !== c.day) d = addDays(d, 1); }
+  else { d = c.startOn && c.startOn > TODAY ? c.startOn : TODAY; while (pd(d).getDay() !== c.day) d = addDays(d, 1); }
   while (d < TODAY) d = addDays(d, 7);
   return d;
 }
@@ -33,11 +82,31 @@ export function courseLabel(c) { const k = course(c.course); return k.name + (k.
 export function weekLabel(c, w) { const k = course(c.course); return (c.course === 'INR' ? 'Session ' : 'Week ') + w + ' of ' + k.weeks; }
 export function verseRef(n) { if (n <= 0) return 'the beginning'; return n <= 7 ? 'Al-Fatiha 1:' + n : 'Al-Baqarah 2:' + (n - 7); }
 export function versesBefore(c, week) { return ((c.sem - 1) * course(c.course).weeks + (week - 1)) * 3; }
+/* This week's lesson. Topics come from the approved syllabus chart; weeks or subjects the chart does not
+   have yet show a placeholder. */
 export function lesson(c, week) {
-  const loaded = S.charts[c.course + '-' + c.sem]; const tag = c.course === 'INR' ? 'Session ' : 'Week ';
+  const key = c.course + '-' + c.sem; const data = (S.chartData || {})[key]; const loaded = S.charts[key] || data; const tag = c.course === 'INR' ? 'Session ' : 'Week ';
   const ph = t => loaded ? '[' + tag + week + ' ' + t + ' from the syllabus chart]' : '[Syllabus chart not loaded yet]';
-  const b = c.course === 'INR' ? (INTRO[week - 1] || 'Course complete') : topicOf(c) + ': ' + ph('sub-topic');
-  return { q: 'Resume from ' + verseRef(versesBefore(c, week) + 1) + ' (3 verses)', b, l: ph('rulings'), e: ph('topic') };
+  const from = sub => data ? (data[sub] && data[sub][week - 1]) || '[Not in the syllabus chart yet]' : null;
+  const b = from('b') || (c.course === 'INR' ? (INTRO[week - 1] || 'Course complete') : topicOf(c) + ': ' + ph('sub-topic'));
+  return { q: 'Resume from ' + verseRef(versesBefore(c, week) + 1) + ' (3 verses)', b, l: from('l') || ph('rulings'), e: from('e') || ph('topic') };
+}
+/* How a material is shown on the reading page: pdf, image, word, youtube, drive, link or none. */
+import { teacherTitle } from '/shared/teachername.js';
+export { teacherTitle };
+export { readKind } from '/shared/readkind.js';
+/* Choosing a location's responsible person or coordinator from the students. current is the student id, or a
+   name from before this rule, which stays on offer until it is replaced. */
+export function personOpts(current, blank) {
+  const list = S.students.filter(s => !s.left).slice().sort((a, b) => a.name.localeCompare(b.name)).map(s => [s.id, s.name + (s.classId ? ' · ' + s.classId : '')]);
+  const known = !current || S.students.some(s => s.id === current);
+  return [['', blank]].concat(known ? [] : [[current, current + ' (not in the student list)']]).concat(list);
+}
+export function personValue(l, key) {
+  const sid = l[key + 'Sid']; if (sid && S.students.some(s => s.id === sid)) return sid;
+  const name = l[key]; if (!name || name === 'None yet') return '';
+  const same = S.students.filter(s => s.name === name && !s.left);
+  return same.length === 1 ? same[0].id : name;
 }
 export function stuStats(s) {
   const ss = classSessions(s.classId).filter(x => x.held && x.logged && x.date >= s.joined);
@@ -50,14 +119,19 @@ export function stuStats(s) {
 }
 export const STAT = { new: ['gold', 'New'], active: ['ok', 'Active'], risk: ['warn', 'At risk'], followup: ['warnfill', 'In follow-up'] };
 export const statChip = k => chip(STAT[k][0], STAT[k][1]);
-export function taken(sid, crs, sem, sub) { return S.results.some(r => r.sid === sid && r.course === crs && r.sem === sem && r.sub === sub); }
-export function best(sid, crs, sem, sub) { const r = S.results.filter(r => r.sid === sid && r.course === crs && r.sem === sem && r.sub === sub && r.pct != null); return r.length ? Math.max.apply(null, r.map(x => x.pct)) : null; }
+/* the semester exam of a subject has been taken (chapter papers are tracked separately) */
+export function taken(sid, crs, sem, sub, cid) { return S.results.some(r => r.sid === sid && r.course === crs && r.sem === sem && r.sub === sub && !r.chapter && (!cid || r.cid === cid)); }
+const resultsOf = (sid, crs, sem, sub) => S.results.filter(r => r.sid === sid && r.course === crs && r.sem === sem && r.sub === sub);
+export const chaptersFor = (crs, sem, sub) => chapterList(S.chapterCount, crs, sem, sub);
+/* the subject mark: the semester exam, combined with the chapter papers where the subject has them */
+export function best(sid, crs, sem, sub) { return subjectMark(resultsOf(sid, crs, sem, sub), chaptersFor(crs, sem, sub)); }
+export function markDetail(sid, crs, sem, sub) { return markParts(resultsOf(sid, crs, sem, sub), chaptersFor(crs, sem, sub)); }
 export function semResult(sid, crs, sem) { const m = ['b', 'l', 'e'].map(k => best(sid, crs, sem, k)); if (m.some(x => x === null)) return m.every(x => x === null) ? 'none' : 'incomplete'; return m.every(x => x >= 50) ? 'pass' : 'fail'; }
-export function classAtt(cid, since, until) { let p = 0, n = 0; classSessions(cid).filter(x => x.held && x.logged && (!since || x.date >= since) && (!until || x.date <= until)).forEach(x => Object.keys(x.att).forEach(k => { n++; if (x.att[k] === 'p') p++; })); return n ? Math.round(p / n * 100) : null; }
+export function classAtt(cid, since, until) { let p = 0, n = 0; (since || until ? allSessions(cid) : classSessions(cid)).filter(x => x.held && x.logged && (!since || x.date >= since) && (!until || x.date <= until)).forEach(x => Object.keys(x.att).forEach(k => { n++; if (x.att[k] === 'p') p++; })); return n ? Math.round(p / n * 100) : null; }
 export const locCalls = code => S.calls.filter(c => c.loc === code).sort((a, b) => a.date < b.date ? -1 : 1);
 export const locActions = code => S.actions.filter(a => a.loc === code);
 export function locMetrics(code) {
-  const cs = S.classes.filter(c => c.loc === code); const ids = cs.map(c => c.id);
+  const cs = S.classes.filter(c => c.loc === code && !ended(c)); const ids = cs.map(c => c.id);
   const ss = S.sessions.filter(x => ids.includes(x.classId));
   const studs = S.students.filter(s => ids.includes(s.classId)); const st = studs.map(stuStats);
   const cut = addDays(TODAY, -28); let p = 0, n = 0;
@@ -84,9 +158,14 @@ export function pendingResults(code) {
   });
   return out;
 }
-export function allStats() { return S.students.map(s => ({ s, c: cls(s.classId), st: stuStats(s) })).filter(x => x.c); }
+/* Classes a student can be moved to: same group, still running, closest match (course and semester, then location) first. */
+export function moveTargets(s) {
+  const from = cls(s.classId); const fit = c => (c.course === from.course ? 0 : 4) + (c.sem === from.sem ? 0 : 2) + (c.loc === from.loc ? 0 : 1);
+  return S.classes.filter(c => c.g === s.g && !ended(c) && c.id !== from.id).sort((a, b) => fit(a) - fit(b) || (a.id < b.id ? -1 : 1));
+}
+export function allStats() { return S.students.map(s => ({ s, c: cls(s.classId), st: stuStats(s) })).filter(x => x.c && !ended(x.c)); }
 export function attIn(s, from, to) {
-  const ss = classSessions(s.classId).filter(x => x.held && x.logged && x.date >= s.joined && x.date >= from && x.date <= to);
+  const ss = allSessions(s.classId).filter(x => x.held && x.logged && x.date >= s.joined && x.date >= from && x.date <= to);
   if (!ss.length) return null; return Math.round(ss.filter(x => (x.att[s.id] || 'a') === 'p').length / ss.length * 100);
 }
 
@@ -113,7 +192,9 @@ export function classReading(c, w) {
   return { n: studs.length, logged: es.length, met: es.filter(metBoth).length, ayat: avg(es.map(e => e.ayat)), pages: avg(es.map(e => e.pages)) };
 }
 
-export function nextCounter(locCode, co) { const nums = S.classes.filter(c => c.loc === locCode && c.course === co).map(c => +c.id.split('-')[2] || 0); return (nums.length ? Math.max.apply(null, nums) : 0) + 1; }
+export function nextCounter(locCode, co) { const nums = S.classes.filter(c => c.id.startsWith(locCode + '-' + co + '-')).map(c => +c.id.split('-')[2] || 0); return (nums.length ? Math.max.apply(null, nums) : 0) + 1; }
 export const myTeacher = () => S.teachers.find(t => t.id === ME.teacherId);
 export const myStudent = () => stu(ME.studentId);
-export const myLoc = () => loc(ME.loc);
+/* the location being worked on: the person's own, or the one the super admin chose on the page */
+export const activeLocs = () => S.locations.filter(l => !l.disabled);
+export const myLoc = () => loc(ME.role === 'super' ? S.p.loc || (activeLocs()[0] || {}).code : ME.loc);
