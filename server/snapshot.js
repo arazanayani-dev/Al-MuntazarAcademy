@@ -4,8 +4,8 @@
 import { canSeeMaterial, approved, ACADEMIC_ROLES, rolesOf, teacherIdFor, ownerSidFor } from './access.js';
 import { publicUser } from './auth.js';
 import { readinessRows } from './readiness.js';
-import { PASS } from '../shared/grading.js';
-import { callPeople, clashesOf } from '../shared/callpeople.js';
+import { PASS } from '../public/shared/grading.js';
+import { callPeople, clashesOf } from '../public/shared/callpeople.js';
 
 const strip = o => { const { id, ...rest } = o; return rest; };
 /* teachers and students get the approved version of a material, not an update waiting for approval */
@@ -131,7 +131,7 @@ function roleSnapshot(store, user, role) {
     if (!me || !c) return { ...base, classes: [], students: me ? [me] : [], sessions: [], results: [], reading: [], materials: [], shares: [], trainings: [], questions: [], calls: [], actions: tasks, regs: [] };
     const assistant = c.assistantId === me.id;
     const classmates = all('students').filter(s => s.classId === c.id && (assistant || s.id === me.id))
-      .map(s => s.id === me.id ? s : { id: s.id, name: s.name, g: s.g, classId: s.classId, joined: s.joined });
+      .map(s => s.id === me.id ? s : { id: s.id, name: s.name, g: s.g, classId: s.classId, joined: s.joined, since: s.since });
     const sessions = all('sessions').filter(x => x.classId === c.id)
       .map(x => assistant ? x : { ...x, att: x.att[me.id] ? { [me.id]: x.att[me.id] } : {} });
     const shares = all('shares').filter(s => s.cid === c.id);

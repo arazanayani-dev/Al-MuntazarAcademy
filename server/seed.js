@@ -1,7 +1,7 @@
 /* Sample data for a new installation, matching the original prototype.
    Dates are written as they were around Monday 12 Oct 2026 and shifted by whole weeks to the install date,
    so weekdays stay correct and the sample always looks recent. */
-import { addDays, diffDays, weekStart, pd } from '../shared/dates.js';
+import { addDays, diffDays, weekStart, pd } from '../public/shared/dates.js';
 import { hashPassword } from './auth.js';
 
 const REF = '2026-10-12';
@@ -22,7 +22,7 @@ export const DEMO_USERS = [
   { username: 'zainab', name: 'Zainab H.', role: 'student', roles: [], studentId: 'zainab' }
 ];
 
-export function seed(store, today, password) {
+export async function seed(store, today, password) {
   const shift = Math.floor(diffDays(REF, today) / 7) * 7;
   const D = s => addDays(s, shift);
   const T0 = D(REF);
@@ -202,7 +202,7 @@ export function seed(store, today, password) {
     });
   })();
 
-  store.tx(() => {
+  await store.tx(() => {
     const put = (c, list) => list.forEach(o => store.put(c, o));
     put('courses', S.courses.map(c => ({ id: c.code, ...c })));
     put('subjects', S.subjects.map(s => ({ id: s.key, ...s })));

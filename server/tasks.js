@@ -4,7 +4,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { quoted } from './qgen.js';
 import { meetingPeople } from './access.js';
-import { isIsoDate } from '../shared/dates.js';
+import { isIsoDate } from '../public/shared/dates.js';
 
 const MODEL = 'claude-opus-5-5';
 export const TRANSCRIPT_MAX = 200000;

@@ -109,7 +109,7 @@ export function personValue(l, key) {
   return same.length === 1 ? same[0].id : name;
 }
 export function stuStats(s) {
-  const ss = classSessions(s.classId).filter(x => x.held && x.logged && x.date >= s.joined);
+  const ss = classSessions(s.classId).filter(x => x.held && x.logged && x.date >= sinceOf(s));
   let present = 0; ss.forEach(x => { if ((x.att[s.id] || 'a') === 'p') present++; });
   let miss = 0; const missed = [];
   for (let i = ss.length - 1; i >= 0; i--) { const a = ss[i].att[s.id] || 'a'; if (a === 'e') continue; if (a === 'a') { miss++; missed.push(ss[i]); } else break; }

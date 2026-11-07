@@ -31,7 +31,7 @@ The first time it starts with an empty database, it loads the same sample data a
 
 ### Sample accounts
 
-All sample accounts use the password **`almuntazar123`** (set `SEED_PASSWORD` before the first start to choose another).
+All sample accounts use the password **`almuntazar123`** (set `SEED_PASSWORD` to choose another). The sign-in page does not list accounts, so use the usernames below.
 
 | Username | Person | Role |
 | --- | --- | --- |
@@ -52,7 +52,7 @@ All sample accounts use the password **`almuntazar123`** (set `SEED_PASSWORD` be
 | --- | --- |
 | `npm start` | Starts the server. |
 | `npm run dev` | Starts the server and restarts it when a file changes. |
-| `npm test` | Runs the server tests. |
+| `npm test` | Runs the server tests. Set `TEST_DATABASE_URL` to run them against Postgres too. |
 | `npm run seed -- --reset` | Wipes the database and loads the sample data again. |
 
 ### Settings
@@ -60,24 +60,36 @@ All sample accounts use the password **`almuntazar123`** (set `SEED_PASSWORD` be
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `PORT` | `3000` | Port to listen on. |
-| `DATA_DIR` | `./data` | Where the database (`academy.db`) and uploaded files are kept. Back this folder up. |
+| `DATABASE_URL` or `POSTGRES_URL` | (none) | A Postgres connection string. When set, records are kept in Postgres instead of the local file. Vercel sets this when you connect Neon. |
+| `DATA_DIR` | `./data` | Where the local database (`academy.db`) and uploaded files are kept when no Postgres is set. Back this folder up. |
+| `BLOB_READ_WRITE_TOKEN` | (none) | When set, uploaded files go to Vercel Blob. Vercel sets this when you connect Blob storage. |
+| `ANTHROPIC_API_KEY` | (none) | Lets Claude draft exam questions from syllabi and suggest tasks from meeting transcripts. Without it, those features say they are not set up. On your computer it can go in a `.env` file. |
 | `SEED` | on | Set to `0` to start with an empty database instead of the sample data. |
-| `SEED_PASSWORD` | `almuntazar123` | Password given to the sample accounts. |
+| `SEED_PASSWORD` | `almuntazar123` on your computer; **required** on Vercel | Password for the sample accounts. If you change it, sample accounts whose password nobody has changed follow the new value on the next start. |
+| `ADMIN_PASSWORD`, `ADMIN_USERNAME` | (none), `admin` | When set, a super admin account with this username always exists and opens with this password, even if it was changed in the app. Use it to start empty (with `SEED=0`) or to get back in. Remove it once you have your own admin account. |
 | `APP_TZ` | `Asia/Kolkata` | Time zone used to decide today's date. Class times are entered in India time. |
 | `APP_TODAY` | (real date) | Pins today's date, for demonstrations. |
-| `TRUST_PROXY` | off | Set to `1` when running behind a reverse proxy that terminates HTTPS. |
+| `TRUST_PROXY` | off | Set to `1` when running behind a reverse proxy that terminates HTTPS. It is always on for Vercel. |
 
-With no sample data there are no accounts, so create the first super admin before starting:
+To start without sample data, set `SEED=0` and `ADMIN_PASSWORD` before the first start. You can then sign in as `admin` and create everyone else's accounts.
 
-```bash
-SEED=0 npm start   # once, to create the empty database, then stop it
-node --no-warnings -e "
-import('./server/db.js').then(async ({ Store }) => {
-  const { hashPassword } = await import('./server/auth.js');
-  const s = new Store('data/academy.db');
-  s.tx(() => s.put('users', { id: 'u-admin', username: 'admin', name: 'Administrator', role: 'super', password: hashPassword(process.argv[1]) }));
-});" 'choose-a-strong-password'
-```
+## Hosting on Vercel
+
+The repository is ready for Vercel: `vercel.json` serves `public/` as static files and runs everything else through `api/index.js`. Vercel wipes files between requests, so the records go to **Neon Postgres** and uploads to **Vercel Blob**, both added from inside Vercel.
+
+1. On https://vercel.com, sign in with GitHub. Click **Add New → Project** and **Import** `Al-MuntazarAcademy`. Leave the framework as **Other** and the build settings empty.
+2. Before you click Deploy, open **Environment Variables** and add `SEED_PASSWORD` with a strong password. Every sample account will use it. (Or add `SEED=0` and `ADMIN_PASSWORD` to start empty with one admin.) Then click **Deploy**.
+3. In the project, open **Storage → Create Database → Neon** (Postgres), and connect it to the project. This adds `DATABASE_URL`.
+4. Still in **Storage**, create a **Blob** store and connect it. This adds `BLOB_READ_WRITE_TOKEN`.
+5. Open **Deployments**, then on the latest one choose **⋯ → Redeploy**, so it picks up the database and storage.
+
+On the first visit, the app creates its table in Postgres and loads the sample data. Pushing to `main` deploys again automatically, and the data stays.
+
+Notes:
+- Until Neon is connected, the app still runs, but shows a red notice that changes can be lost.
+- Files uploaded on Vercel can be up to 4 MB. For larger books, upload them to Google Drive and paste the link.
+- Uploaded files are stored at long, unguessable Blob addresses. The app passes a file through to the reading page only for people allowed to see the material, and never shows the address.
+- Add `ANTHROPIC_API_KEY` under Environment Variables for question drafting and transcript tasks. Drafting runs after the syllabus is saved, for up to 5 minutes (`maxDuration` in `vercel.json`); a long syllabus may need **Draft more** to finish its chapters.
 
 ### Docker
 
@@ -91,7 +103,7 @@ docker run -p 3000:3000 -v academy-data:/app/data almuntazar-academy
 ```
 server/
   index.js      HTTP server: sign-in, data, actions, uploads, and the web app
-  db.js         SQLite store: one table of JSON records per collection
+  db.js         storage: JSON records in a local SQLite file, or in Postgres when hosted
   auth.js       scrypt password hashing and cookie sessions
   access.js     who may see what (teacher material access, training invitations)
   snapshot.js   the records each role receives; question answers never go to students
@@ -102,7 +114,8 @@ public/
   js/app.js     sign-in, navigation, rendering, buttons and forms
   js/logic.js   values worked out from the records: attendance status, metrics, reading
   js/views/     one file per role, plus shared screens and dialogs
-shared/         date helpers and exam marking used by both server and browser
+public/shared/  date helpers and exam marking used by both server and browser
+api/index.js    the entry point Vercel runs (vercel.json routes requests to it)
 test/           server tests
 ```
 
@@ -118,7 +131,7 @@ test/           server tests
 These parts of the prototype are placeholders that need outside services or content:
 
 - **Sending email and WhatsApp.** Reminders, published results and training invitations are written to an `outbox` table. Connecting an email and WhatsApp provider to send them is the next step.
-- **Reading uploaded question papers.** *Import a question paper* reviews and imports the sample paper (`server/data/sample-paper.json`, read from `Tauheed_1_MCQ_paper_-_new.docx`). It does not yet read the yellow-highlighted answers from a newly uploaded Word file.
+- **Reading uploaded question papers.** *Import a question paper* reviews and imports the sample paper (`server/sample-paper.js`, read from `Tauheed_1_MCQ_paper_-_new.docx`). It does not yet read the yellow-highlighted answers from a newly uploaded Word file.
 - **Loading the syllabus chart from Excel.** The chart shows placeholder topics until the academy's Excel template is available. *Mark chart as loaded* switches on the placeholders for a semester.
 - **Moving a class to its next semester**, and re-exams after a fail.
 - **Recording who attended a training session.**

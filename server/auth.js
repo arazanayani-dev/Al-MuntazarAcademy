@@ -33,25 +33,25 @@ export function publicUser(u) {
   return rest;
 }
 
-export function createSession(store, user, res, secure) {
+export async function createSession(store, user, res, secure) {
   const token = crypto.randomBytes(32).toString('hex');
   const expires = Date.now() + DAYS * 864e5;
-  store.tx(() => store.put('authSessions', { id: token, userId: user.id, expires }));
+  await store.tx(() => store.put('authSessions', { id: token, userId: user.id, expires }));
   res.setHeader('Set-Cookie', `${COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${DAYS * 86400}${secure ? '; Secure' : ''}`);
 }
 
-export function destroySession(store, req, res) {
+export async function destroySession(store, req, res) {
   const token = parseCookies(req.headers.cookie)[COOKIE];
-  if (token && store.find('authSessions', token)) store.tx(() => store.del('authSessions', token));
+  if (token && store.find('authSessions', token)) await store.tx(() => store.del('authSessions', token));
   res.setHeader('Set-Cookie', `${COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
 }
 
-export function currentUser(store, req) {
+export async function currentUser(store, req) {
   const token = parseCookies(req.headers.cookie)[COOKIE];
   if (!token) return null;
   const s = store.find('authSessions', token);
   if (!s) return null;
-  if (s.expires < Date.now()) { store.tx(() => store.del('authSessions', token)); return null; }
+  if (s.expires < Date.now()) { await store.tx(() => store.del('authSessions', token)); return null; }
   const u = store.find('users', s.userId);
   return u && !u.disabled ? u : null;
 }

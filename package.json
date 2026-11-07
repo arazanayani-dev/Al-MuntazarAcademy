@@ -15,7 +15,10 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.3.0",
+    "@vercel/blob": "^2.8.2",
+    "@vercel/functions": "^2.2.13",
     "express": "^4.21.2",
-    "pdfjs-dist": "^4.10.38"
+    "pdfjs-dist": "^4.10.38",
+    "pg": "^8.23.1"
   }
 }

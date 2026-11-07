@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createApp } from '../server/index.js';
-import { Store } from '../server/db.js';
+import { SqliteStore } from '../server/db.js';
 import { ensureSessions } from '../server/actions.js';
 
 const PW = 'almuntazar123';
@@ -45,13 +45,13 @@ let server, base, store, dir;
 before(async () => {
   process.env.SEED_PASSWORD = PW;
   dir = fs.mkdtempSync(path.join(os.tmpdir(), 'academy-test-'));
-  store = new Store(':memory:');
+  store = await SqliteStore.open(':memory:');
   const askTasks = async () => [
     { task: 'Call the parents of the absent students', owner: 'sr. sabiha', due: '2026-08-07', quote: 'she will call the parents of the absent students by Friday' },
     { task: 'Update the notice board', owner: 'Somebody Unknown', due: '2020-01-01', quote: 'Everybody agreed we should update the notice board soon' },
     { task: 'An invented task', owner: 'Sr. Sabiha', due: '', quote: 'this line was never said by anyone at the meeting' }
   ];
-  const app = createApp({ store, dataDir: dir, today: () => '2026-10-12', askQuestions: fakeAsk, askTasks });
+  const app = await createApp({ store, dataDir: dir, today: () => '2026-10-12', askQuestions: fakeAsk, askTasks });
   await new Promise(r => { server = app.listen(0, r); });
   base = 'http://localhost:' + server.address().port;
 });
@@ -70,7 +70,8 @@ async function login(username, password = PW) {
 
 test('the sign-in page is not told about any accounts', async () => {
   const meta = await (await fetch(base + '/api/meta')).json();
-  assert.deepEqual(Object.keys(meta).sort(), ['signedIn', 'today']);
+  assert.deepEqual(Object.keys(meta).sort(), ['maxUpload', 'setupMessage', 'signedIn', 'temporary', 'today']);
+  assert.ok(!JSON.stringify(meta).includes('abbas'));
 });
 
 /* a new student comes in through registration, then gets a class */
@@ -464,7 +465,7 @@ test('the people running a location are on its weekly call without being added',
 
 test('a clash between two weekly calls is warned about, without being refused', async () => {
   const su = await login('abbas');
-  const { callsClash } = await import('../shared/callpeople.js');
+  const { callsClash } = await import('../public/shared/callpeople.js');
   const at = (callDay, callTime) => ({ callDay, callTime });
   assert.ok(callsClash(at('Monday', '8:00 PM'), at('Monday', '20:00')), 'however the time is written');
   assert.ok(callsClash(at('Monday', '8:00 PM'), at('Monday', '8:30 pm')), 'within the hour');
@@ -805,7 +806,7 @@ test('a teaching level outside the rule can be given as an approved exception', 
 });
 
 test('a teacher\'s name is shown as Resp ... Sir, while the record keeps the plain name', async () => {
-  const { teacherTitle } = await import('../shared/teachername.js');
+  const { teacherTitle } = await import('../public/shared/teachername.js');
   assert.equal(teacherTitle({ name: 'Naimat Chowdhry', g: 'M' }), 'Resp Naimat Chowdhry Sir');
   assert.equal(teacherTitle({ name: 'Fatima Ali', g: 'F' }), 'Resp Miss Fatima Ali');
   const lr = await login('jafar'); const t = store.find('teachers', 't4'); assert.ok(!t.name.startsWith('Resp'), 'the record is unchanged');
@@ -1252,7 +1253,7 @@ test('a Belief syllabus drafts a paper per chapter; papers open as the class fin
   const se = await st.act('examStart', { id: 'BAS-4-b' });
   assert.equal(se.status, 200); assert.equal(se.body.result.qs.length, 30);
   // mark: chapters (100 + 0 + 0) / 3 = 33.3, exam 80 -> 57
-  const { subjectMark } = await import('../shared/grading.js');
+  const { subjectMark } = await import('../public/shared/grading.js');
   assert.equal(subjectMark([{ pct: 100, chapter: 1 }, { pct: 80 }], [1, 2, 3]), 57);
   assert.equal(subjectMark([{ pct: 100, chapter: 1 }], [1, 2, 3]), null, 'no mark until the semester exam is taken');
   assert.equal(subjectMark([{ pct: 70 }], []), 70, 'without chapter papers the exam alone counts');
@@ -1312,7 +1313,7 @@ test('a teacher goes through the subject\'s training (syllabus and teacher\'s gu
 test('without an API key, drafting says it is not set up instead of failing silently', async () => {
   const { draftQuestions } = await import('../server/qgen.js');
   const m = store.all('materials').find(x => x.title === 'Basic Semester 4 syllabus: Belief');
-  await draftQuestions(store, path.join(dir, 'uploads'), m.id, async () => { throw new Error('Could not resolve authentication method. Expected either apiKey or authToken to be set.'); });
+  await draftQuestions(store, m.id, async () => { throw new Error('Could not resolve authentication method. Expected either apiKey or authToken to be set.'); });
   assert.equal(store.find('materials', m.id).qgen.status, 'failed');
   assert.match(store.find('materials', m.id).qgen.note, /not set up/);
   assert.equal(store.all('questions').filter(q => q.source === m.id && !q.aud && q.status === 'approved').length, 36, 'approved questions are kept');
@@ -1343,8 +1344,32 @@ test('without an API key, drafting says it is not set up instead of failing sile
 });
 
 test('sample data is shifted to the install date in whole weeks', async () => {
-  const s = new Store(':memory:');
-  createApp({ store: s, dataDir: dir, today: () => '2026-11-04' });
+  const s = await SqliteStore.open(':memory:');
+  await createApp({ store: s, dataDir: dir, today: () => '2026-11-04' });
   const loc = s.find('locations', 'MUM');
   assert.equal(loc.nextCall, '2026-11-02');
+});
+
+test('sample accounts follow a changed SEED_PASSWORD, and ADMIN_PASSWORD always opens the admin account', async () => {
+  const { verifyPassword } = await import('../server/auth.js');
+  const s = await SqliteStore.open(':memory:');
+  const saved = { seed: process.env.SEED_PASSWORD, admin: process.env.ADMIN_PASSWORD };
+  try {
+    process.env.SEED_PASSWORD = 'first-password';
+    await createApp({ store: s, dataDir: dir, today: () => '2026-10-12' });
+    assert.ok(verifyPassword('first-password', s.all('users').find(u => u.username === 'abbas').password));
+
+    /* the password was changed in the hosting settings, pasted with spaces and quotes */
+    process.env.SEED_PASSWORD = '  "second-password" ';
+    process.env.ADMIN_PASSWORD = ' admin-password-1 ';
+    await createApp({ store: s, dataDir: dir, today: () => '2026-10-12' });
+    const abbas = s.all('users').find(u => u.username === 'abbas');
+    assert.ok(verifyPassword('second-password', abbas.password));
+    const admin = s.all('users').find(u => u.username === 'admin');
+    assert.ok(admin.roles.includes('super'));
+    assert.ok(verifyPassword('admin-password-1', admin.password));
+  } finally {
+    if (saved.seed === undefined) delete process.env.SEED_PASSWORD; else process.env.SEED_PASSWORD = saved.seed;
+    if (saved.admin === undefined) delete process.env.ADMIN_PASSWORD; else process.env.ADMIN_PASSWORD = saved.admin;
+  }
 });

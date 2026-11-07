@@ -8,15 +8,14 @@
    link). PDFs and Word files are tracked page by page (30 seconds a page); a video or picture counts once it has
    been open long enough. The quiz attempts are kept on the syllabus's record. Not being ready is flagged, never
    blocking. */
-import fs from 'node:fs';
-import path from 'node:path';
 import { pdfPages } from './pdftext.js';
 import { docxText } from './docx.js';
 import { approved, canSeeMaterial } from './access.js';
-import { readUnits } from '../shared/readunits.js';
-import { readKind } from '../shared/readkind.js';
-import { addDays } from '../shared/dates.js';
-import { teacherTitle } from '../shared/teachername.js';
+import { fileBytes, loadFile } from './files.js';
+import { readUnits } from '../public/shared/readunits.js';
+import { readKind } from '../public/shared/readkind.js';
+import { addDays } from '../public/shared/dates.js';
+import { teacherTitle } from '../public/shared/teachername.js';
 
 export const READ_SECS = 30;   /* seconds on a page (or a Word section or picture) for it to count as read */
 export const VIEW_SECS = 120;  /* seconds a video (or Google Drive item) must be open for it to count as watched */
@@ -28,24 +27,26 @@ export const RETAKE_DAYS = 1;
 const TRACKED = ['pdf', 'word', 'image', 'youtube', 'drive'];
 const PAGED = ['pdf', 'word'];
 
-let uploads = null;
 const unitCache = new Map(); /* fileId -> number of pages (PDF) or sections (Word) */
-export function configureReadiness(o) { uploads = o.uploads; }
+export function configureReadiness() {}
 
-/* pages of a PDF, or sections of a Word file; 0 when the file cannot be read (the reader's count is used then) */
+/* pages of a PDF or sections of a Word file, from its contents (0 when they cannot be read) */
+export function countUnits(buf, name) {
+  try { return /\.pdf$/i.test(name) ? pdfPages(buf).length : /\.docx$/i.test(name) ? readUnits(docxText(buf)).length : 0; } catch { return 0; }
+}
+/* pages of a PDF, or sections of a Word file; 0 when the file cannot be read (the reader's count is used then).
+   Counted when the file is uploaded (f.units); older files are counted from the data folder. */
 export function unitsOf(store, fileId) {
+  const f = store.find('files', fileId); if (!f) return 0;
+  if (f.units) return f.units;
   if (unitCache.has(fileId)) return unitCache.get(fileId);
-  const f = store.find('files', fileId); let n = 0;
-  try {
-    const buf = fs.readFileSync(path.join(uploads, f.id));
-    n = /\.pdf$/i.test(f.name) ? pdfPages(buf).length : /\.docx$/i.test(f.name) ? readUnits(docxText(buf)).length : 0;
-  } catch { n = 0; }
-  unitCache.set(fileId, n); return n;
+  let buf; try { buf = fileBytes(f); } catch { return 0; } /* in storage and not loaded yet: not remembered as 0 */
+  const n = countUnits(buf, f.name); unitCache.set(fileId, n); return n;
 }
 /* the text of a PDF or Word file, for drafting questions from it ('' when it cannot be read) */
-export function fileText(store, fileId) {
+export async function fileText(store, fileId) {
   const f = store.find('files', fileId); if (!f) return '';
-  try { const buf = fs.readFileSync(path.join(uploads, f.id)); return /\.pdf$/i.test(f.name) ? pdfPages(buf).join('\n') : /\.docx$/i.test(f.name) ? docxText(buf).map(p => p.text).join('\n') : ''; } catch { return ''; }
+  try { const buf = await loadFile(f); return /\.pdf$/i.test(f.name) ? pdfPages(buf).join('\n') : /\.docx$/i.test(f.name) ? docxText(buf).map(p => p.text).join('\n') : ''; } catch { return ''; }
 }
 
 export const recordId = (tid, m) => tid + '|' + (m.fileId || 'link:' + m.id);

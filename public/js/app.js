@@ -41,10 +41,16 @@ let busy = false;
 /* ---------- server ---------- */
 class ApiError extends Error {}
 async function api(method, url, body) {
-  const r = await fetch(url, { method, credentials: 'same-origin', headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
-  let j = {}; try { j = await r.json(); } catch { /* not JSON */ }
+  /* Give up after 30 seconds rather than leaving the page waiting forever */
+  const ctl = new AbortController(); const timer = setTimeout(() => ctl.abort(), 30000);
+  let r;
+  try { r = await fetch(url, { method, credentials: 'same-origin', headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined, signal: ctl.signal }); }
+  catch (e) { throw new ApiError(e.name === 'AbortError' ? 'The server took too long to answer.' : 'Could not reach the server. Check your internet connection.'); }
+  finally { clearTimeout(timer); }
+  const text = await r.text().catch(() => '');
+  let j = {}; try { j = JSON.parse(text); } catch { /* not JSON, for example a hosting error page */ }
   if (r.status === 401 && url !== '/api/login') { clearSession(); render(); throw new ApiError('Please sign in again.'); }
-  if (!r.ok) throw new ApiError(j.error || 'Something went wrong. Please try again.');
+  if (!r.ok) throw new ApiError(j.error || ('The server answered ' + r.status + (text ? ': ' + text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 300) : '') + '. Please try again.'));
   return j;
 }
 async function call(name, args) {
@@ -58,6 +64,22 @@ async function loadData() {
   const j = await api('GET', '/api/data');
   setSession(j.me, j.today, j.data);
 }
+
+/* ---------- light and dark ---------- */
+const themeNow = () => document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+function themeBtn(cl) {
+  const next = themeNow() === 'dark' ? 'light' : 'dark';
+  return '<button type="button" class="' + cl + '" data-act="theme" aria-label="Switch to ' + next + ' mode" title="Switch to ' + next + ' mode">' + icon(next === 'dark' ? 'moon' : 'sun') + '<span>' + (next === 'dark' ? 'Dark' : 'Light') + '</span></button>';
+}
+function setTheme(t, save) {
+  document.documentElement.setAttribute('data-theme', t);
+  if (save) { try { localStorage.setItem('am-theme', t); } catch { /* private mode: choice lasts this visit */ } }
+}
+/* Until someone picks, follow the computer's own setting as it changes */
+if (window.matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+  let saved = null; try { saved = localStorage.getItem('am-theme'); } catch { /* ignore */ }
+  if (!saved) { setTheme(e.matches ? 'dark' : 'light', false); render(); }
+});
 
 /* ---------- rendering ---------- */
 /* Every page of every role the person holds, as role:tab, in role order (most senior first). */
@@ -81,12 +103,14 @@ function navHtml() {
 
 function loginHtml() {
   const f = S.login || (S.login = { username: '', err: '' });
-  return '<main class="login"><section class="card"><div class="brandbig">Almuntazar Academy</div><h1 style="text-align:center;font-size:20px">Sign in</h1>' +
+  return '<main class="login">' + themeBtn('theme-btn on-login') + '<section class="card"><div class="brandbig">Almuntazar Academy</div><h1 style="text-align:center;font-size:20px">Sign in</h1>' +
     '<form data-form="login" style="display:flex;flex-direction:column;gap:12px">' +
       '<div class="field"><label for="li-u">Username</label><input id="li-u" name="username" autocomplete="username" autocapitalize="off" spellcheck="false" value="' + esc(f.username) + '" required></div>' +
       '<div class="field"><label for="li-p">Password</label><input id="li-p" name="password" type="password" autocomplete="current-password" required></div>' +
       (f.err ? '<p class="err" role="alert">' + esc(f.err) + '</p>' : '') +
       '<button class="btn primary wide" type="submit">Sign in</button></form>' +
+    '<p class="sub small" style="text-align:center">Forgotten your password? Ask your academy administrator to reset it.</p>' +
+    (META.setupMessage ? '<p class="err" role="alert">' + esc(META.setupMessage) + '</p>' : '') +
     '</section></main>';
 }
 
@@ -101,7 +125,8 @@ function render() {
   try { body = fn(); } catch (e) { console.error(e); body = '<section class="card"><p class="err">This page could not be shown.</p>' + act('nav', firstTab().role + ':' + firstTab().tab, 'Go to the first page') + '</section>'; }
   app.innerHTML =
     '<header class="bar"><div class="bar-in"><div class="brand">Almuntazar Academy</div>' +
-    '<div class="acct"><span><span class="nm">' + esc(ME.name) + '</span> · ' + esc(ME.label) + '</span>' + act('pwOpen', '', 'Password', '') + act('logout', '', 'Sign out', '') + '</div></div></header>' +
+    '<div class="acct"><span><span class="nm">' + esc(ME.name) + '</span><span class="role"> · ' + esc(ME.label) + '</span></span>' + themeBtn('theme-btn') + act('pwOpen', '', 'Password', '') + act('logout', '', 'Sign out', '') + '</div></div></header>' +
+    (META.temporary ? '<div class="note warn-note"><div>No permanent database is connected, so changes here can be lost at any time. Connect Neon Postgres in Vercel to keep them.</div></div>' : '') +
     '<div class="shell' + (showNav ? ' has-nav' : '') + '">' + (showNav ? n.side : '') +
     '<main class="wrap' + (narrow ? ' narrow' : '') + '">' + body + '</main></div>' + (showNav ? n.bar : '');
   document.getElementById('modal-root').innerHTML = modalHtml();
@@ -134,6 +159,7 @@ function resetUi() { Object.assign(S, { view: 'home', p: {}, modal: null, draft:
 const A = {
   async nav(v) { const left = S.view === 'read'; S.back = null; go(v); if (left) await leftReader(); },
   more() { S.more = !S.more; },
+  theme() { setTheme(themeNow() === 'dark' ? 'light' : 'dark', true); },
   async logout() { await api('POST', '/api/logout'); clearSession(); resetUi(); },
   rdWeek(w) { S.form.rd.week = w; },
   toast(t) { toast(t); },
@@ -375,6 +401,7 @@ const A = {
 
 /* ---------- form submissions ---------- */
 async function upload(file) {
+  if (META.maxUpload && file.size > META.maxUpload) throw new ApiError('That file is larger than ' + Math.round(META.maxUpload / 1048576) + ' MB. Upload it to Google Drive and paste the link instead.');
   const r = await fetch('/api/upload', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': file.type || 'application/octet-stream', 'X-Filename': encodeURIComponent(file.name) }, body: file });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new ApiError(j.error || 'The file could not be uploaded.');
@@ -459,8 +486,15 @@ document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && S.modal)
 window.addEventListener('beforeunload', ev => { if (S.exam || S.draft) { ev.preventDefault(); ev.returnValue = ''; } });
 
 /* ---------- start ---------- */
+function startupError(msg) {
+  document.getElementById('app').innerHTML = '<main class="login"><section class="card"><div class="brandbig">Almuntazar Academy</div>' +
+    '<h1 style="text-align:center;font-size:20px">The app could not start</h1><p class="err" role="alert">' + esc(msg) + '</p>' +
+    '<button class="btn primary wide" type="button" onclick="location.reload()">Try again</button></section></main>';
+}
 (async function boot() {
-  try { META = await api('GET', '/api/meta'); } catch { /* keep defaults */ }
+  window.__amStarted = true;
+  try { META = await api('GET', '/api/meta'); }
+  catch (e) { startupError(e.message); return; }
   if (META.signedIn) { try { await loadData(); goFirst(); } catch { clearSession(); } }
   render();
 })();

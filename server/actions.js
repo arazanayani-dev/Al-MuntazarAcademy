@@ -1,23 +1,21 @@
 /* Every change the app can make. Each action names the roles allowed to call it, checks the record
    belongs to the caller's location, class or teaching load, validates its input, then writes to the store. */
 import crypto from 'node:crypto';
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { addDays, weekStart, isIsoDate, DOWL, pd, ft } from '../shared/dates.js';
-import { qScore } from '../shared/scoring.js';
+import { addDays, weekStart, isIsoDate, DOWL, pd, ft } from '../public/shared/dates.js';
+import { qScore } from '../public/shared/scoring.js';
 import { canSeeMaterial, invited, approved, rolesOf, teacherIdFor, ASSIGNABLE, meetingPeople, ownerSidFor } from './access.js';
 import { hashPassword, verifyPassword } from './auth.js';
 import { chaptersOf, planDetailed } from './syllabus.js';
-import { chapterWindow, chapterState, chapterKey, subjectMark, PASS } from '../shared/grading.js';
-import { callPeople, clashesOf } from '../shared/callpeople.js';
-import { teacherTitle } from '../shared/teachername.js';
+import { chapterWindow, chapterState, chapterKey, subjectMark, PASS } from '../public/shared/grading.js';
+import { callPeople, clashesOf } from '../public/shared/callpeople.js';
+import { teacherTitle } from '../public/shared/teachername.js';
 import { readinessRows, progress, itemProgress, recordId, unitsFor, quizQuestions, guidesOf, QUIZ_SIZE, QUIZ_MIN, QUIZ_PASS } from './readiness.js';
+import { fileBytes } from './files.js';
+import SAMPLE_PAPER from './sample-paper.js';
+export { SAMPLE_PAPER };
 
-const here = path.dirname(fileURLToPath(import.meta.url));
-/* where uploaded files are kept; set by the server at start-up */
-let UPLOADS = null;
-export function configure(o) { UPLOADS = o.uploads; }
+/* kept for the server's start-up call; files are read through files.js */
+export function configure() {}
 
 /* A syllabus for one course, semester and subject, with a PDF or Word file, proposes that subject's weekly
    topics for the Standard Syllabus Chart; approving the syllabus puts them in the chart. */
@@ -45,16 +43,15 @@ function guideQuiz(ctx, g) {
 }
 function syllabusPlan(ctx, m) {
   delete m.chart; delete m.chartNote;
-  if (m.type !== 'Syllabus' || m.course === 'ALL' || !m.sem || !m.sub || m.sub === 'all' || !m.fileId || !UPLOADS) return;
+  if (m.type !== 'Syllabus' || m.course === 'ALL' || !m.sem || !m.sub || m.sub === 'all' || !m.fileId) return;
   const f = ctx.store.find('files', m.fileId); const k = ctx.store.find('courses', m.course); if (!f || !k) return;
   try {
-    const { chapters, reason } = chaptersOf(fs.readFileSync(path.join(UPLOADS, f.id)), f.name);
+    const { chapters, reason } = chaptersOf(fileBytes(f), f.name);
     if (!chapters.length) { m.chartNote = reason + ' Fill in the chart by hand with Edit this chart.'; return; }
     const plan = planDetailed(chapters, k.weeks);
     m.chart = { sub: m.sub, weeks: plan.map(w => w.text), map: plan.map(w => w.chapters), chapters: chapters.length };
   } catch { m.chartNote = 'The syllabus file could not be read for the chart. Fill in the chart by hand with Edit this chart.'; }
 }
-export const SAMPLE_PAPER = JSON.parse(fs.readFileSync(path.join(here, 'data', 'sample-paper.json'), 'utf8'));
 
 export class UserError extends Error { constructor(msg, status) { super(msg); this.status = status || 400; } }
 const need = (cond, msg, status) => { if (!cond) throw new UserError(msg, status); };
@@ -308,9 +305,9 @@ function restartSessions(store, c, today) {
 }
 
 /* Creates a session record for every scheduled class date that has passed, so it can be logged. */
-export function ensureSessions(store, today) {
+export async function ensureSessions(store, today) {
   let made = 0;
-  store.tx(() => {
+  await store.tx(() => {
     for (const c of store.all('classes')) {
       if (c.status !== 'active' || !c.teacherId) continue;
       const k = store.find('courses', c.course); if (!k) continue;
@@ -1061,7 +1058,7 @@ export const ACTIONS = {
   userReset: { roles: ['super'], run(ctx, a) {
     const u = ctx.store.find('users', str(a.id)); need(u, 'User not found.', 404);
     const pw = String(a.password || ''); need(pw.length >= 8, 'The password needs at least 8 characters.');
-    u.password = hashPassword(pw); ctx.store.put('users', u);
+    u.password = hashPassword(pw); u.demo = false; ctx.store.put('users', u);
     ctx.store.all('authSessions').filter(s => s.userId === u.id).forEach(s => ctx.store.del('authSessions', s.id));
     return { toast: 'Password reset for ' + u.name };
   } },
@@ -1307,7 +1304,7 @@ export const ACTIONS = {
 /* A person can hold several roles. An action runs as the role of the screen it came from (args.as) when that
    role may do it, otherwise as the most senior of the person's roles that may. ctx.user is that role's view of
    the person; ctx.account is the stored login. */
-export function runAction(store, user, today, name, args) {
+export async function runAction(store, user, today, name, args) {
   const def = Object.prototype.hasOwnProperty.call(ACTIONS, name) ? ACTIONS[name] : null;
   need(def, 'Unknown action.', 404);
   const mine = rolesOf(store, user).filter(r => def.roles.includes(r));

@@ -7,11 +7,10 @@
    Runs in the background after the upload is saved (the request does not wait). Needs Anthropic credentials
    on the server (ANTHROPIC_API_KEY); without them the material shows that AI drafting is not set up. */
 import crypto from 'node:crypto';
-import fs from 'node:fs';
-import path from 'node:path';
 import Anthropic from '@anthropic-ai/sdk';
 import { chaptersOf } from './syllabus.js';
 import { guidesOf, fileText } from './readiness.js';
+import { loadFile } from './files.js';
 
 /* each chapter's pool; a chapter paper draws 12 of them for each attempt (CHAPTER_PAPER in actions.js) */
 export const PER_CHAPTER = 24;
@@ -185,23 +184,23 @@ const notSetUp = e => e instanceof Anthropic.AuthenticationError || e instanceof
    (m.qgen) so the creator can see it. Drafts from an earlier version of the syllabus that were never
    approved are replaced; approved ones stay in use until a chapter's new questions are approved (see
    supersede in actions.js), each drafting being one "round". ask can be swapped out (tests). */
-export async function draftQuestions(store, uploads, mid, ask = askClaude) {
+export async function draftQuestions(store, mid, ask = askClaude) {
   const m = store.find('materials', mid); if (!m || !m.fileId) return;
   const f = store.find('files', m.fileId); const k = store.find('courses', m.course); const subj = store.find('subjects', m.sub);
-  const set = q => store.tx(() => { const cur = store.find('materials', mid); if (cur) { cur.qgen = { ...(cur.qgen || {}), ...q }; store.put('materials', cur); } });
+  const set = q => store.tx(() => { const cur = store.find('materials', mid); if (cur) { cur.qgen = { ...(cur.qgen || {}), ...q, at: new Date().toISOString() }; store.put('materials', cur); } });
   let chapters;
-  try { ({ chapters } = chaptersOf(fs.readFileSync(path.join(uploads, f.id)), f.name)); } catch { chapters = []; }
+  try { ({ chapters } = chaptersOf(await loadFile(f), f.name)); } catch { chapters = []; }
   chapters = (chapters || []).filter(c => c.text && c.text.trim().length > 200);
-  if (!chapters.length) { set({ status: 'failed', note: 'No chapter text could be read from the syllabus, so no questions were drafted.' }); return; }
+  if (!chapters.length) { await set({ status: 'failed', note: 'No chapter text could be read from the syllabus, so no questions were drafted.' }); return; }
   /* part 'teacher' drafts only the teachers' quiz (for a syllabus whose chapter papers already exist); part
      'more' tops up chapters whose pool is under PER_CHAPTER with new questions that join the existing paper */
   const part = m.qgen && ['teacher', 'more'].includes(m.qgen.part) ? m.qgen.part : '';
   const gone = q => q.source === mid && q.status !== 'approved' && (part === 'teacher' ? q.aud === 'teacher' : part === 'more' ? q.extra && !q.aud : true);
-  store.tx(() => store.all('questions').filter(gone).forEach(q => store.del('questions', q.id)));
+  await store.tx(() => store.all('questions').filter(gone).forEach(q => store.del('questions', q.id)));
   const have = c => store.all('questions').filter(q => q.source === mid && !q.aud && !q.retired && q.status !== 'rejected' && q.chapter === c.n);
   const todo = part === 'teacher' ? [] : part === 'more' ? chapters.filter(c => have(c).length < PER_CHAPTER) : chapters;
   const round = new Date().toISOString(); const steps = todo.length + (part === 'more' ? 0 : 1);
-  set({ status: 'running', total: steps, done: 0, made: 0, note: '', started: round, part: part || undefined });
+  await set({ status: 'running', total: steps, done: 0, made: 0, note: '', started: round, part: part || undefined });
   let made = 0; const failed = [];
   for (const c of todo) {
     try {
@@ -211,7 +210,7 @@ export async function draftQuestions(store, uploads, mid, ask = askClaude) {
       const raw = await ask({ course: k ? k.name : m.course, sem: m.sem, subject: subj ? subj.name : m.sub, n: c.n, title: c.title, text, count, avoid: old.map(q => q.text) });
       const v = vet(raw, text); const good = v.good.slice(0, count);
       const joins = old.filter(q => q.status === 'approved').map(q => q.round).filter(Boolean).sort().pop();
-      store.tx(() => good.forEach(q => store.put('questions', {
+      await store.tx(() => good.forEach(q => store.put('questions', {
         id: uid('q'), course: m.course, sem: m.sem, sub: m.sub, retired: false, ...q,
         chapter: c.n, chapterTitle: c.title, source: mid, ai: true, round: part === 'more' ? joins : round, ...(part === 'more' ? { extra: true } : {}),
         status: 'pending', submittedBy: (m.submittedBy || 'the content creator') + ' (drafted by AI)', submittedById: m.submittedById, submittedOn: new Date().toISOString().slice(0, 10), reviewNote: ''
@@ -219,19 +218,19 @@ export async function draftQuestions(store, uploads, mid, ask = askClaude) {
       made += good.length;
       if (good.length < count) failed.push('Chapter ' + c.n + ': ' + good.length + ' of ' + count + ' kept' + (why(v.dropped) ? ' (left out: ' + why(v.dropped) + ')' : ''));
     } catch (e) {
-      if (notSetUp(e)) { set({ status: 'failed', note: 'AI drafting is not set up on the server (no Anthropic API key). Add one and use Draft questions again.', made }); return; }
+      if (notSetUp(e)) { await set({ status: 'failed', note: 'AI drafting is not set up on the server (no Anthropic API key). Add one and use Draft questions again.', made }); return; }
       failed.push('Chapter ' + c.n + ': ' + (e && e.message ? e.message.slice(0, 120) : 'failed'));
     }
-    set({ done: todo.indexOf(c) + 1, made });
+    await set({ done: todo.indexOf(c) + 1, made });
   }
-  if (part === 'more') { set({ status: 'done', made, note: todo.length ? failed.join('; ') : 'Every chapter already has ' + PER_CHAPTER + ' questions.', finished: new Date().toISOString() }); return; }
+  if (part === 'more') { await set({ status: 'done', made, note: todo.length ? failed.join('; ') : 'Every chapter already has ' + PER_CHAPTER + ' questions.', finished: new Date().toISOString() }); return; }
   /* the teachers' readiness quiz, from the whole syllabus and the subject's teacher's guides */
   try {
-    const guide = guidesOf(store, m).map(g => fileText(store, g.fileId)).filter(t => t.trim()).join('\n\n').slice(0, 100000);
+    const guide = (await Promise.all(guidesOf(store, m).map(g => fileText(store, g.fileId)))).filter(t => t.trim()).join('\n\n').slice(0, 100000);
     const text = chapters.map(c => 'Chapter ' + c.n + ': ' + c.title + '\n' + c.text).join('\n\n').slice(0, 120000);
     const raw = await ask({ teacher: true, course: k ? k.name : m.course, sem: m.sem, subject: subj ? subj.name : m.sub, n: 0, title: m.title, text, guide });
     const v = vet(raw, text + '\n' + guide); const good = v.good.slice(0, TEACHER_QUIZ);
-    store.tx(() => good.forEach(q => store.put('questions', {
+    await store.tx(() => good.forEach(q => store.put('questions', {
       id: uid('q'), course: m.course, sem: m.sem, sub: m.sub, retired: false, ...q, aud: 'teacher',
       chapterTitle: TEACHER_QUIZ_TITLE, source: mid, ai: true, round,
       status: 'pending', submittedBy: (m.submittedBy || 'the content creator') + ' (drafted by AI)', submittedById: m.submittedById, submittedOn: new Date().toISOString().slice(0, 10), reviewNote: ''
@@ -239,9 +238,9 @@ export async function draftQuestions(store, uploads, mid, ask = askClaude) {
     made += good.length;
     if (good.length < TEACHER_QUIZ) failed.push('Teacher quiz: ' + good.length + ' of ' + TEACHER_QUIZ + ' kept' + (why(v.dropped) ? ' (left out: ' + why(v.dropped) + ')' : ''));
   } catch (e) {
-    if (notSetUp(e)) { set({ status: 'failed', note: 'AI drafting is not set up on the server (no Anthropic API key). Add one and use Draft questions again.', made }); return; }
+    if (notSetUp(e)) { await set({ status: 'failed', note: 'AI drafting is not set up on the server (no Anthropic API key). Add one and use Draft questions again.', made }); return; }
     failed.push('Teacher quiz: ' + (e && e.message ? e.message.slice(0, 120) : 'failed'));
   }
-  set({ done: steps, made });
-  set({ status: made ? 'done' : 'failed', made, note: failed.length ? failed.join('; ') : '', finished: new Date().toISOString() });
+  await set({ done: steps, made });
+  await set({ status: made ? 'done' : 'failed', made, note: failed.length ? failed.join('; ') : '', finished: new Date().toISOString() });
 }
