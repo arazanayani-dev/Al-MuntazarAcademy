@@ -18,23 +18,38 @@ export function modalHtml() {
   }
   if (m.t === 'class') {
     const f = S.form; const can = ME.role === 'locadmin'; const k = course(f.course);
-    b = '<h2>Create class in ' + esc(ME.locName) + '</h2>' +
-      '<div class="form"><div class="field"><label for="cl-c">Course type</label><select id="cl-c" data-bind="form.course" data-rerender="1">' + opts(S.courses.map(c => [c.code, c.name]), f.course) + '</select></div>' +
+    const ec = m.cid ? cls(m.cid) : null; const studs = ec ? classStudents(ec.id) : [];
+    const started = ec ? S.sessions.some(x => x.classId === ec.id && x.held && x.logged) : false;
+    const lockCourse = ec && (studs.length || started); const lockGroup = ec && studs.length;
+    b = '<h2>' + (ec ? 'Edit ' + ec.id : 'Create class in ' + esc(ME.locName)) + '</h2>' +
+      '<div class="form"><div class="field"><label for="cl-c">Course type</label><select id="cl-c" data-bind="form.course" data-rerender="1"' + (lockCourse ? ' disabled' : '') + '>' + opts(S.courses.map(c => [c.code, c.name]), f.course) + '</select></div>' +
       '<div class="field"><label for="cl-s">Semester</label><select id="cl-s" data-bind="form.sem">' + opts(Array.from({ length: k.sems }, (_, i) => [i + 1, 'Semester ' + (i + 1)]), f.sem) + '</select></div>' +
       '<div class="field"><label for="cl-l">Language</label><select id="cl-l" disabled><option>English</option></select></div>' +
-      '<div class="field"><label for="cl-g">Group</label><select id="cl-g" data-bind="form.g" data-rerender="1">' + opts([['F', 'Sisters'], ['M', 'Brothers']], f.g) + '</select></div>' +
+      '<div class="field"><label for="cl-g">Group</label><select id="cl-g" data-bind="form.g" data-rerender="1"' + (lockGroup ? ' disabled' : '') + '>' + opts([['F', 'Sisters'], ['M', 'Brothers']], f.g) + '</select></div>' +
       '<div class="field"><label for="cl-d">Day</label><select id="cl-d" data-bind="form.day">' + opts(DOWL.map((d, i) => [i, d]), f.day) + '</select></div>' +
       '<div class="field"><label for="cl-t">Time (India)</label><input id="cl-t" type="time" data-bind="form.time" value="' + esc(f.time) + '"></div>' +
-      (can ? '<div class="field"><label for="cl-te">Teacher</label><select id="cl-te" data-bind="form.teacher">' + opts([['', 'Assign later']].concat(S.teachers.filter(t => t.g === f.g).map(t => [t.id, t.name])), f.teacher) + '</select></div>' : '') +
+      (can ? '<div class="field"><label for="cl-te">Teacher</label><select id="cl-te" data-bind="form.teacher">' + opts([['', ec ? 'No teacher (awaiting)' : 'Assign later']].concat(S.teachers.filter(t => t.g === f.g).map(t => [t.id, t.name])), f.teacher) + '</select></div>' : '') +
+      (ec ? '<div class="field"><label for="cl-as">Class assistant</label><select id="cl-as" data-bind="form.assistant">' + opts([['', 'None']].concat(studs.map(s => [s.id, s.name])), f.assistant) + '</select></div>' : '') +
       '<div class="field"><label for="cl-m">Google Meet link</label><input id="cl-m" type="url" data-bind="form.meet" value="' + esc(f.meet) + '" placeholder="Paste the class Meet link"></div></div>' +
-      '<p class="sub small">Class number will be ' + esc(ME.loc) + '-' + f.course + '-' + String(nextCounter(ME.loc, f.course)).padStart(3, '0') + '.' + (can ? '' : ' The class is saved as awaiting teacher until the primary or secondary responsible person assigns one.') + '</p>' +
-      '<div class="btns">' + act('classSave', '', 'Create class', 'btn primary') + act('modalClose', '', 'Cancel') + '</div>';
+      (ec
+        ? '<p class="sub small">' + (lockCourse ? 'The course is fixed once the class has students or logged sessions. ' : '') + (lockGroup ? 'The group is fixed while the class has students. ' : '') + 'Moving to a new semester starts its weeks again from week 1.' + (can ? '' : ' Only the primary or secondary responsible person changes the teacher.') + '</p>' +
+          '<div class="btns">' + act('classEditSave', ec.id, 'Save changes', 'btn primary') + act('modalClose', '', 'Cancel') + '</div>'
+        : '<p class="sub small">Class number will be ' + esc(ME.loc) + '-' + f.course + '-' + String(nextCounter(ME.loc, f.course)).padStart(3, '0') + '.' + (can ? '' : ' The class is saved as awaiting teacher until the primary or secondary responsible person assigns one.') + ' Students are added by allocating registrations to the class.</p>' +
+          '<div class="btns">' + act('classSave', '', 'Create class', 'btn primary') + act('modalClose', '', 'Cancel') + '</div>');
   }
   if (m.t === 'alloc') {
-    const r = S.regs.find(x => x.id === m.rid); const list = S.classes.filter(c => c.g === r.g).sort((a, b) => (a.course === r.course ? 0 : 1) - (b.course === r.course ? 0 : 1));
-    b = '<h2>Allocate a class to ' + esc(r.name) + '</h2><p class="sub">' + group(r.g) + ' classes only. A student can be in one class at a time, in any location.</p>' +
-      '<div class="field"><label for="al-c">Class</label><select id="al-c" data-bind="form.cid">' + opts(list.map(c => [c.id, c.id + ' · ' + courseLabel(c) + ' · ' + DOW[c.day] + ' ' + ft(c.time) + (c.status === 'awaiting' ? ' · awaiting teacher' : '')]), S.form.cid) + '</select></div>' +
-      '<div class="btns">' + act('allocSave', r.id, 'Add student and allocate', 'btn primary') + act('modalClose', '', 'Cancel') + '</div>';
+    const r = S.regs.find(x => x.id === m.rid); const list = S.classes.filter(c => c.loc === ME.loc && c.g === r.g).sort((a, b) => (a.course === r.course ? 0 : 1) - (b.course === r.course ? 0 : 1));
+    b = '<h2>Allocate a class to ' + esc(r.name) + '</h2><p class="sub">' + group(r.g) + ' classes in ' + esc(ME.locName) + '. Wants ' + esc(course(r.course).name) + '.</p>' +
+      (list.length ? '<div class="field"><label for="al-c">Class</label><select id="al-c" data-bind="form.cid">' + opts(list.map(c => [c.id, c.id + ' · ' + courseLabel(c) + ' · ' + DOW[c.day] + ' ' + ft(c.time) + ' · ' + classStudents(c.id).length + ' students' + (c.status === 'awaiting' ? ' · awaiting teacher' : '')]), S.form.cid) + '</select></div>' +
+        '<div class="btns">' + act('allocSave', r.id, 'Add student to this class', 'btn primary') + act('modalClose', '', 'Cancel') + '</div>'
+        : '<p>There is no ' + (r.g === 'F' ? 'sisters' : 'brothers') + ' class in this location yet. Create one under Classes first.</p><div class="btns">' + act('modalClose', '', 'Close', 'btn primary') + '</div>');
+  }
+  if (m.t === 'move') {
+    const s = stu(m.sid); const from = cls(s.classId); const list = S.classes.filter(c => c.loc === ME.loc && c.g === s.g && c.id !== from.id);
+    b = '<h2>Move ' + esc(s.name) + '</h2><p class="sub">Now in ' + from.id + ' · ' + esc(courseLabel(from)) + '. Attendance in the new class counts from today; past records stay with ' + from.id + '.</p>' +
+      (list.length ? '<div class="field"><label for="mv-c">Move to</label><select id="mv-c" data-bind="form.cid">' + opts(list.map(c => [c.id, c.id + ' · ' + courseLabel(c) + ' · ' + DOW[c.day] + ' ' + ft(c.time) + ' · ' + classStudents(c.id).length + ' students']), S.form.cid) + '</select></div>' +
+        '<div class="btns">' + act('moveSave', s.id, 'Move student', 'btn primary') + act('modalClose', '', 'Cancel') + '</div>'
+        : '<p>There is no other ' + (s.g === 'F' ? 'sisters' : 'brothers') + ' class in this location.</p><div class="btns">' + act('modalClose', '', 'Close', 'btn primary') + '</div>');
   }
   if (m.t === 'call') {
     b = '<h2>Record the weekly call</h2><p class="sub">' + fdl(myLoc().nextCall) + '</p>' +

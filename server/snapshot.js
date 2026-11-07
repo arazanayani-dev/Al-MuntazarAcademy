@@ -74,7 +74,7 @@ export function snapshot(store, user) {
     if (!me || !c) return { ...base, classes: [], students: [], sessions: [], results: [], reading: [], materials: [], shares: [], trainings: [], questions: [], calls: [], actions: [], regs: [] };
     const assistant = c.assistantId === me.id;
     const classmates = all('students').filter(s => s.classId === c.id && (assistant || s.id === me.id))
-      .map(s => s.id === me.id ? s : { id: s.id, name: s.name, g: s.g, classId: s.classId, joined: s.joined });
+      .map(s => s.id === me.id ? s : { id: s.id, name: s.name, g: s.g, classId: s.classId, joined: s.joined, since: s.since });
     const sessions = all('sessions').filter(x => x.classId === c.id)
       .map(x => assistant ? x : { ...x, att: x.att[me.id] ? { [me.id]: x.att[me.id] } : {} });
     const shares = all('shares').filter(s => s.cid === c.id);

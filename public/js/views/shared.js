@@ -5,7 +5,7 @@ import { isAns } from '/shared/scoring.js';
 import { esc, chip, tile, pct, opts, act, tbl, tx, stmtList } from '../ui.js';
 import {
   cls, stu, course, courseLabel, topicOf, group, teacherName, classStudents, classSessions, classAtt, weeksDone, weekLabel,
-  stuStats, statChip, semResult, best, rd, lastWeek, TG, readAlert, lesson, verseRef, versesBefore, subName, QTYPE
+  stuStats, statChip, semResult, best, rd, lastWeek, TG, readAlert, lesson, verseRef, versesBefore, subName, QTYPE, sinceOf
 } from '../logic.js';
 
 export function viewClass() {
@@ -13,12 +13,15 @@ export function viewClass() {
   const studs = classStudents(c.id); const ss = classSessions(c.id); const canLog = ME.role === 'locadmin' || ME.role === 'teacher';
   const sems = []; for (let s = 1; s <= c.sem; s++) if (studs.some(x => semResult(x.id, c.course, s) !== 'none')) sems.push(s);
   const assistant = c.assistantId && stu(c.assistantId);
+  const canEdit = (ME.role === 'locadmin' || ME.role === 'coord') && c.loc === ME.loc; const canMove = ME.role === 'locadmin' && c.loc === ME.loc;
+  const mv = s => canMove ? '<td>' + act('moveOpen', s.id, 'Move', 'link') + '</td>' : '';
+  const mvh = canMove ? [['']] : [];
   return '<div>' + act('back', '', 'Back', 'link') + '</div><div class="head"><div><h1>' + c.id + '</h1><div class="sub">' + esc(courseLabel(c)) + ' · ' + esc(topicOf(c)) + ' · ' + group(c.g) + ' · ' + DOW[c.day] + ' ' + ft(c.time) + ' India time</div></div>' +
-    '<div class="btns">' + (c.status === 'awaiting' && ME.role === 'locadmin' ? act('assignOpen', c.id, 'Assign teacher', 'btn primary') : '') + sems.map(s => act('marks', c.id + '|' + s, 'Semester ' + s + ' marksheet')).join('') + '</div></div>' +
+    '<div class="btns">' + (c.status === 'awaiting' && ME.role === 'locadmin' ? act('assignOpen', c.id, 'Assign teacher', 'btn primary') : '') + (canEdit ? act('classEditOpen', c.id, 'Edit class') : '') + sems.map(s => act('marks', c.id + '|' + s, 'Semester ' + s + ' marksheet')).join('') + '</div></div>' +
     '<section class="tiles">' + tile('Teacher', esc(teacherName(c.teacherId) || 'Awaiting'), assistant ? 'Assistant: ' + esc(assistant.name) : 'No class assistant yet') + tile('Students', studs.length, '') + tile('Attendance', pct(classAtt(c.id)), 'This semester') + tile('Syllabus chart', weeksDone(c.id) ? weekLabel(c, weeksDone(c.id)) : 'Not started', '') + '</section>' +
     '<div class="cols"><section class="card main"><h2>Students</h2>' + (c.course === 'INR'
-      ? tbl([['Student'], ['Status'], ['Missed in a row', 1], ['Attendance', 1]], studs.map(s => { const st = stuStats(s); return '<tr><th scope="row">' + esc(s.name) + '</th><td>' + statChip(st.status) + '</td><td class="r">' + st.miss + '</td><td class="r">' + pct(st.pct) + '</td></tr>'; }))
-      : tbl([['Student'], ['Status'], ['Missed in a row', 1], ['Attendance', 1], ['Ayat last week', 1], ['Pages last week', 1]], studs.map(s => { const st = stuStats(s); const e = rd(s.id, lastWeek()); const tg = TG(); return '<tr><th scope="row">' + esc(s.name) + (readAlert(s) ? ' ' + chip('gold', 'Reading alert') : '') + '</th><td>' + statChip(st.status) + '</td><td class="r">' + st.miss + '</td><td class="r">' + pct(st.pct) + '</td><td class="r' + (e && e.ayat < tg.ayat ? ' warn-t' : '') + '">' + (e ? e.ayat : '<span class="sub">Not logged</span>') + '</td><td class="r' + (e && e.pages < tg.pages ? ' warn-t' : '') + '">' + (e ? e.pages : '<span class="sub">Not logged</span>') + '</td></tr>'; }))) + '</section>' +
+      ? tbl([['Student'], ['Status'], ['Missed in a row', 1], ['Attendance', 1]].concat(mvh), studs.map(s => { const st = stuStats(s); return '<tr><th scope="row">' + esc(s.name) + '</th><td>' + statChip(st.status) + '</td><td class="r">' + st.miss + '</td><td class="r">' + pct(st.pct) + '</td>' + mv(s) + '</tr>'; }))
+      : tbl([['Student'], ['Status'], ['Missed in a row', 1], ['Attendance', 1], ['Ayat last week', 1], ['Pages last week', 1]].concat(mvh), studs.map(s => { const st = stuStats(s); const e = rd(s.id, lastWeek()); const tg = TG(); return '<tr><th scope="row">' + esc(s.name) + (readAlert(s) ? ' ' + chip('gold', 'Reading alert') : '') + '</th><td>' + statChip(st.status) + '</td><td class="r">' + st.miss + '</td><td class="r">' + pct(st.pct) + '</td><td class="r' + (e && e.ayat < tg.ayat ? ' warn-t' : '') + '">' + (e ? e.ayat : '<span class="sub">Not logged</span>') + '</td><td class="r' + (e && e.pages < tg.pages ? ' warn-t' : '') + '">' + (e ? e.pages : '<span class="sub">Not logged</span>') + '</td>' + mv(s) + '</tr>'; }))) + (studs.length ? '' : '<p class="sub small">Students join a class when the location manager allocates a registration to it.</p>') + '</section>' +
     '<section class="card side"><h2>Sessions</h2><div class="rows">' + (ss.slice().reverse().map(x => {
       const n = Object.keys(x.att).length; const p = Object.keys(x.att).filter(k => x.att[k] === 'p').length;
       return '<div class="row"><div><div class="b">' + fd(x.date) + (x.week ? ' · ' + (c.course === 'INR' ? 'Session ' : 'Week ') + x.week : '') + '</div><div class="sub small">' + (!x.held ? 'Cancelled: ' + esc(x.reason || 'no reason given') : x.logged ? p + ' of ' + n + ' present · logged by ' + esc(x.loggedBy) : 'Not logged yet') + '</div></div>' + (x.held && !x.logged ? (canLog ? act('logOpen', x.id, 'Log now', 'btn primary') : chip('warn', 'Not logged')) : !x.held ? chip('mute', 'Cancelled') : chip('ok', 'Logged')) + '</div>';
@@ -37,7 +40,7 @@ export function viewMarks() {
 }
 
 export function viewLog() {
-  const d = S.draft; const x = S.sessions.find(s => s.id === d.sid); const c = cls(x.classId); const studs = classStudents(c.id).filter(s => s.joined <= x.date);
+  const d = S.draft; const x = S.sessions.find(s => s.id === d.sid); const c = cls(x.classId); const studs = classStudents(c.id).filter(s => sinceOf(s) <= x.date);
   const l = lesson(c, x.week || weeksDone(c.id)); const who = ME.name + ', ' + (ME.role === 'teacher' ? 'teacher' : ME.role === 'student' ? 'class assistant' : 'on behalf of the teacher');
   const counts = { p: 0, a: 0, e: 0 }; studs.forEach(s => counts[d.att[s.id] || 'p']++);
   return '<div>' + act('back', '', 'Back', 'link') + '</div><div><h1>Log session</h1><div class="sub">' + c.id + ' · ' + esc(courseLabel(c)) + ' · ' + (c.course === 'INR' ? 'Session ' : 'Week ') + x.week + '</div><div class="sub">' + fdl(x.date) + '</div></div>' +

@@ -10,8 +10,8 @@ It is built from the clickable prototype, kept in [`docs/prototype.html`](docs/p
 | --- | --- |
 | **Super admin** | Sees every location side by side. Adds locations, course types, subjects, teachers and user accounts. Runs reports, including a custom report builder with CSV download. |
 | **Academic team** | Maintains the syllabus chart, the question bank (six question types, plus importing a question paper), exam windows, the materials library, weekly reading targets, teacher access levels, teacher training and the traditions library. |
-| **Location responsible** (primary or secondary) | Runs one location: creates classes and assigns teachers, chases unlogged sessions, reviews and publishes results, records the weekly coordination call and tracks action items. |
-| **Coordinator** | Allocates new registrations to classes, creates classes (which wait for a teacher to be assigned), and follows their own action items. |
+| **Location responsible** (primary or secondary) | Runs one location: registers new students and allocates each registration to a class (the only way a student joins one), creates and edits classes, assigns teachers, moves students between classes, chases unlogged sessions, reviews and publishes results, records the weekly coordination call and tracks action items. |
+| **Coordinator** | Registers new students (the location manager then allocates them to a class), creates and edits classes (the manager assigns teachers), and follows their own action items. |
 | **Teacher** | Sees the next class and this week's lesson, logs sessions and attendance, sees students who need attention, shares materials with a class, and replies to training invitations. |
 | **Student** | Sees the next class in their own time zone, logs weekly reading, takes exams, sees published results and certificates, and opens shared materials. A student who is their class's **class assistant** can also log sessions. |
 

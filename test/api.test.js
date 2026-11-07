@@ -150,3 +150,44 @@ test('sample accounts follow a changed SEED_PASSWORD, and ADMIN_PASSWORD always 
     if (saved.admin === undefined) delete process.env.ADMIN_PASSWORD; else process.env.ADMIN_PASSWORD = saved.admin;
   }
 });
+
+test('students join only by registration, and only the location manager allocates them', async () => {
+  const co = await login('sabiha');
+  const r = await co.act('regAdd', { name: 'Test Student', g: 'F', course: 'BAS', city: 'Pune', phone: '+91 90000 00000', email: 'test@example.com' });
+  assert.equal(r.status, 200);
+  const reg = r.body.data.regs.find(x => x.name === 'Test Student');
+  assert.ok(reg);
+  assert.equal((await co.act('allocSave', { rid: reg.id, cid: 'MUM-BAS-003' })).status, 403, 'a coordinator cannot allocate');
+  const mgr = await login('jafar');
+  assert.equal((await mgr.act('allocSave', { rid: reg.id, cid: 'BAH-BAS-001' })).status, 403, 'not a class in another location');
+  assert.equal((await mgr.act('allocSave', { rid: reg.id, cid: 'MUM-BAS-004' })).status, 400, 'not a brothers class');
+  const ok = await mgr.act('allocSave', { rid: reg.id, cid: 'MUM-BAS-003' });
+  assert.equal(ok.status, 200);
+  const s = ok.body.data.students.find(x => x.name === 'Test Student');
+  assert.equal(s.classId, 'MUM-BAS-003');
+  assert.equal(s.phone, '+91 90000 00000');
+  assert.ok(!ok.body.data.regs.some(x => x.id === reg.id));
+});
+
+test('a class can be edited, and a student moved, within the rules', async () => {
+  const mgr = await login('jafar');
+  /* the course cannot change once a class has students */
+  assert.equal((await mgr.act('classEdit', { cid: 'MUM-BAS-003', course: 'INT', sem: 1, time: '19:30', day: 4 })).status, 400);
+  /* moving up a semester starts the weeks again */
+  const up = await mgr.act('classEdit', { cid: 'MUM-INT-001', course: 'INT', sem: 2, time: '21:00', day: 6, meet: 'https://meet.google.com/abc-defg-hij' });
+  assert.equal(up.status, 200);
+  const c = up.body.data.classes.find(x => x.id === 'MUM-INT-001');
+  assert.equal(c.sem, 2); assert.equal(c.time, 21 * 60); assert.ok(c.semStart);
+  /* the coordinator can edit the schedule but not the teacher */
+  const co = await login('sabiha');
+  const e = await co.act('classEdit', { cid: 'MUM-INT-001', course: 'INT', sem: 2, time: '20:30', day: 6, teacher: '' });
+  assert.equal(e.status, 200);
+  assert.equal(e.body.data.classes.find(x => x.id === 'MUM-INT-001').teacherId, 't4');
+  assert.equal((await co.act('studentMove', { sid: 'sakinam', cid: 'MUM-ADV-001' })).status, 403);
+  /* the manager moves a student to another sisters class in the location */
+  assert.equal((await mgr.act('studentMove', { sid: 'sakinam', cid: 'MUM-BAS-004' })).status, 400, 'not a brothers class');
+  const mv = await mgr.act('studentMove', { sid: 'sakinam', cid: 'MUM-ADV-001' });
+  assert.equal(mv.status, 200);
+  const s = mv.body.data.students.find(x => x.id === 'sakinam');
+  assert.equal(s.classId, 'MUM-ADV-001'); assert.equal(s.since, '2026-10-12');
+});

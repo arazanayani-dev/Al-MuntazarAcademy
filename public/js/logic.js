@@ -18,7 +18,10 @@ export const subName = k => { const s = S.subjects.find(s => s.key === k); retur
 export const group = g => g === 'F' ? 'Sisters' : 'Brothers';
 export const classSessions = cid => S.sessions.filter(x => x.classId === cid).sort((a, b) => a.date < b.date ? -1 : 1);
 export const classStudents = cid => S.students.filter(s => s.classId === cid);
-export const weeksDone = cid => classSessions(cid).filter(x => x.held).length;
+/* Weeks taught in the class's current semester (a class that moved up starts again on the day it moved) */
+export const weeksDone = cid => { const c = cls(cid); const from = (c && c.semStart) || ''; return classSessions(cid).filter(x => x.held && x.date >= from).length; };
+/* The day a student started in their current class: they count in its sessions from then */
+export const sinceOf = s => s.since || s.joined;
 export function teacherName(id) { const t = S.teachers.find(t => t.id === id); return t ? t.name : ''; }
 export function nextDate(c) {
   const ss = classSessions(c.id); let d;
@@ -40,7 +43,7 @@ export function lesson(c, week) {
   return { q: 'Resume from ' + verseRef(versesBefore(c, week) + 1) + ' (3 verses)', b, l: ph('rulings'), e: ph('topic') };
 }
 export function stuStats(s) {
-  const ss = classSessions(s.classId).filter(x => x.held && x.logged && x.date >= s.joined);
+  const ss = classSessions(s.classId).filter(x => x.held && x.logged && x.date >= sinceOf(s));
   let present = 0; ss.forEach(x => { if ((x.att[s.id] || 'a') === 'p') present++; });
   let miss = 0; const missed = [];
   for (let i = ss.length - 1; i >= 0; i--) { const a = ss[i].att[s.id] || 'a'; if (a === 'e') continue; if (a === 'a') { miss++; missed.push(ss[i]); } else break; }
@@ -86,7 +89,7 @@ export function pendingResults(code) {
 }
 export function allStats() { return S.students.map(s => ({ s, c: cls(s.classId), st: stuStats(s) })).filter(x => x.c); }
 export function attIn(s, from, to) {
-  const ss = classSessions(s.classId).filter(x => x.held && x.logged && x.date >= s.joined && x.date >= from && x.date <= to);
+  const ss = classSessions(s.classId).filter(x => x.held && x.logged && x.date >= sinceOf(s) && x.date >= from && x.date <= to);
   if (!ss.length) return null; return Math.round(ss.filter(x => (x.att[s.id] || 'a') === 'p').length / ss.length * 100);
 }
 

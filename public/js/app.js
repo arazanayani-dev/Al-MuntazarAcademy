@@ -5,7 +5,7 @@ import { esc, act, icon } from './ui.js';
 import { cls, verseRef, versesBefore } from './logic.js';
 import { viewSuperHome, viewLocations, viewMasters, viewUsers, viewReports } from './views/admin.js';
 import { viewChart, viewBank, viewExams, viewTraditions, viewMaterials, viewTraining } from './views/academic.js';
-import { viewLocHome, viewClasses, viewStudents, viewCoord, viewCoordHome } from './views/location.js';
+import { viewLocHome, viewClasses, viewStudents, viewCoord, viewCoordHome, viewRegs } from './views/location.js';
 import { viewTeacherHome, viewTeacherClasses, viewTeacherMaterials, viewTeacherTraining, viewTeacherProfile } from './views/teacher.js';
 import { viewStudentHome, viewStudentExams, viewStudentMaterials, viewStudentProfile } from './views/student.js';
 import { viewClass, viewMarks, viewLog, viewExamTake, examCount } from './views/shared.js';
@@ -14,16 +14,16 @@ import { modalHtml } from './views/modals.js';
 const TABS = {
   super: [['home', 'Overview'], ['locations', 'Locations'], ['masters', 'Master lists', 'Masters'], ['users', 'User accounts', 'Users'], ['reports', 'Reports']],
   academic: [['chart', 'Syllabus chart', 'Chart'], ['bank', 'Question bank', 'Questions'], ['exams', 'Exams'], ['materials', 'Materials'], ['training', 'Training'], ['traditions', 'Traditions']],
-  locadmin: [['home', 'Overview'], ['classes', 'Classes'], ['students', 'Students'], ['coord', 'Coordination']],
-  coord: [['home', 'Overview'], ['classes', 'Classes'], ['students', 'Students']],
+  locadmin: [['home', 'Overview'], ['regs', 'Registrations', 'Register'], ['classes', 'Classes'], ['students', 'Students'], ['coord', 'Coordination', 'Calls']],
+  coord: [['home', 'Overview'], ['regs', 'Registrations', 'Register'], ['classes', 'Classes'], ['students', 'Students']],
   teacher: [['home', 'Home'], ['classes', 'Classes'], ['materials', 'Materials'], ['training', 'Training'], ['profile', 'Profile']],
   student: [['home', 'Home'], ['exams', 'Exams'], ['materials', 'Materials'], ['profile', 'Profile']]
 };
 const VIEWS = {
   'super.home': viewSuperHome, 'super.locations': viewLocations, 'super.masters': viewMasters, 'super.users': viewUsers, 'super.reports': viewReports,
   'academic.chart': viewChart, 'academic.bank': viewBank, 'academic.exams': viewExams, 'academic.traditions': viewTraditions, 'academic.materials': viewMaterials, 'academic.training': viewTraining,
-  'locadmin.home': viewLocHome, 'locadmin.classes': viewClasses, 'locadmin.students': viewStudents, 'locadmin.coord': viewCoord,
-  'coord.home': viewCoordHome, 'coord.classes': viewClasses, 'coord.students': viewStudents,
+  'locadmin.home': viewLocHome, 'locadmin.regs': viewRegs, 'locadmin.classes': viewClasses, 'locadmin.students': viewStudents, 'locadmin.coord': viewCoord,
+  'coord.home': viewCoordHome, 'coord.regs': viewRegs, 'coord.classes': viewClasses, 'coord.students': viewStudents,
   'teacher.home': viewTeacherHome, 'teacher.classes': viewTeacherClasses, 'teacher.materials': viewTeacherMaterials, 'teacher.training': viewTeacherTraining, 'teacher.profile': viewTeacherProfile,
   'student.home': viewStudentHome, 'student.exams': viewStudentExams, 'student.materials': viewStudentMaterials, 'student.profile': viewStudentProfile
 };
@@ -165,8 +165,13 @@ const A = {
   async assignSave(cid) { await call('assignSave', { cid, teacher: S.form.teacher }); S.modal = null; },
   classNew() { S.form = { course: 'BAS', sem: 1, g: 'F', day: 1, time: '20:00', teacher: '', meet: '' }; S.modal = { t: 'class' }; },
   async classSave() { await call('classSave', S.form); S.modal = null; },
-  allocOpen(rid) { const r = S.regs.find(x => x.id === rid); const l = S.classes.filter(c => c.g === r.g).sort((a, b) => (a.course === r.course ? 0 : 1) - (b.course === r.course ? 0 : 1)); S.form = { cid: l[0] ? l[0].id : '' }; S.modal = { t: 'alloc', rid }; },
+  allocOpen(rid) { const r = S.regs.find(x => x.id === rid); const l = S.classes.filter(c => c.loc === ME.loc && c.g === r.g).sort((a, b) => (a.course === r.course ? 0 : 1) - (b.course === r.course ? 0 : 1)); S.form = { cid: l[0] ? l[0].id : '' }; S.modal = { t: 'alloc', rid }; },
   async allocSave(rid) { await call('allocSave', { rid, cid: S.form.cid }); S.modal = null; },
+  async regRemove(id) { const r = S.regs.find(x => x.id === id); if (confirm('Remove the registration for ' + (r ? r.name : 'this student') + '?')) await call('regRemove', { id }); },
+  classEditOpen(cid) { const c = cls(cid); const h = Math.floor(c.time / 60), mi = c.time % 60; S.form = { cid, course: c.course, sem: c.sem, g: c.g, day: c.day, time: String(h).padStart(2, '0') + ':' + String(mi).padStart(2, '0'), teacher: c.teacherId || '', assistant: c.assistantId || '', meet: c.meet || '' }; S.modal = { t: 'class', cid }; },
+  async classEditSave(cid) { const f = Object.assign({}, S.form); if (ME.role !== 'locadmin') delete f.teacher; await call('classEdit', f); S.modal = null; },
+  moveOpen(sid) { const s = S.students.find(x => x.id === sid); const l = S.classes.filter(c => c.loc === ME.loc && c.g === s.g && c.id !== s.classId); S.form = { cid: l[0] ? l[0].id : '' }; S.modal = { t: 'move', sid }; },
+  async moveSave(sid) { await call('studentMove', { sid, cid: S.form.cid }); S.modal = null; },
   callOpen() { S.form = { status: 'Held', text: '', owner: ME.name, due: addDays(TODAY, 7) }; S.modal = { t: 'call' }; },
   async callSave() { await call('callSave', S.form); S.modal = null; },
   reminder(sid) { S.modal = { t: 'reminder', sid }; },
@@ -216,7 +221,7 @@ const F = {
   async userReset(d) { await call('userReset', d); S.modal = null; },
   async userAdd(d) { await call('userAdd', d); S.form.ua = { role: 'teacher' }; }
 };
-const SERVER_FORMS = ['locAdd', 'courseAdd', 'subjectAdd', 'teacherAdd', 'tradAdd', 'actionAdd', 'examAdd', 'setTargets'];
+const SERVER_FORMS = ['locAdd', 'courseAdd', 'subjectAdd', 'teacherAdd', 'tradAdd', 'actionAdd', 'examAdd', 'setTargets', 'regAdd'];
 
 function showError(e) {
   const msg = e && e.message ? e.message : 'Something went wrong.';

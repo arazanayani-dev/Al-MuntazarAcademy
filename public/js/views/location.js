@@ -32,6 +32,7 @@ export function viewLocHome() {
   const acts = locActions(ME.loc);
   const attn = await_.map(c => '<div class="row"><div><div class="b">' + c.id + ' is awaiting a teacher</div><div class="sub small">Created by ' + esc(c.createdBy || 'the coordinator') + (c.createdOn ? ' on ' + fd(c.createdOn) : '') + ' · ' + esc(courseLabel(c)) + ' · ' + group(c.g) + ' · ' + DOW[c.day] + ' ' + ft(c.time) + '</div></div>' + act('assignOpen', c.id, 'Assign teacher', 'btn primary') + '</div>')
     .concat(m.unlogged.sort((a, b) => a.date < b.date ? -1 : 1).map(x => { const d = daysAgo(x.date); return '<div class="row"><div><div class="b">' + x.classId + ' · session not logged for ' + d + ' days</div><div class="small ' + (d > 7 ? 'warn-t' : 'sub') + '">' + fdl(x.date) + '</div></div><div class="btns">' + act('remind', x.id, 'Remind teacher') + act('logOpen', x.id, 'Log it for them') + '</div></div>'; }))
+    .concat(S.regs.length ? ['<div class="row"><div><div class="b">' + S.regs.length + (S.regs.length === 1 ? ' registration is' : ' registrations are') + ' waiting for a class</div><div class="sub small">' + S.regs.slice(0, 3).map(r => esc(r.name)).join(', ') + (S.regs.length > 3 ? ' and more' : '') + '</div></div>' + act('nav', 'regs', 'Allocate classes', 'btn primary') + '</div>'] : [])
     .concat(pend.map(p => '<div class="row"><div><div class="b">' + p.c.id + ' · Semester ' + p.sem + ' results to review</div><div class="sub small">' + p.taken + ' of ' + p.total + ' students have exam marks</div></div>' + act('marks', p.c.id + '|' + p.sem, 'Review and publish') + '</div>'));
   return '<div class="head"><div><h1>' + esc(l.name) + '</h1><div class="sub">' + m.classes + ' classes · ' + m.students + ' students · coordinator ' + esc(l.coordinator) + '</div></div><div class="btns">' + act('classNew', '', 'Create class', 'btn primary') + '</div></div>' +
     '<section class="tiles" aria-label="Performance">' +
@@ -72,8 +73,26 @@ export function viewCoord() {
 export function viewCoordHome() {
   const await_ = S.classes.filter(c => c.loc === ME.loc && c.status === 'awaiting');
   return '<div class="head"><div><h1>' + esc(ME.locName) + '</h1><div class="sub">Coordinator view</div></div><div class="btns">' + act('classNew', '', 'Create class', 'btn primary') + '</div></div>' +
-    '<div class="cols"><div class="main"><section class="card"><div class="card-h"><h2>Registrations awaiting a class</h2>' + chip('gold', S.regs.length + ' waiting') + '</div><div class="rows">' +
-      (S.regs.map(r => '<div class="row"><div><div class="b">' + esc(r.name) + '</div><div class="sub small">' + group(r.g) + ' · wants ' + esc(course(r.course).name) + ' · lives in ' + esc(r.city) + '</div></div>' + act('allocOpen', r.id, 'Allocate a class', 'btn primary') + '</div>').join('') || '<p class="empty">No registrations are waiting.</p>') + '</div></section>' +
+    '<div class="cols"><div class="main"><section class="card"><div class="card-h"><h2>Registrations awaiting a class</h2><div class="btns">' + chip('gold', S.regs.length + ' waiting') + act('nav', 'regs', 'Register a student', 'btn primary') + '</div></div><div class="rows">' +
+      (S.regs.map(r => '<div class="row"><div><div class="b">' + esc(r.name) + '</div><div class="sub small">' + group(r.g) + ' · wants ' + esc(course(r.course).name) + (r.city ? ' · lives in ' + esc(r.city) : '') + '</div></div></div>').join('') || '<p class="empty">No registrations are waiting.</p>') + '</div><p class="sub small">The primary or secondary responsible person allocates each registration to a class.</p></section>' +
       '<section class="card"><h2>Classes awaiting a teacher</h2><div class="rows">' + (await_.map(c => '<div class="row"><div><div class="b">' + c.id + '</div><div class="sub small">' + esc(courseLabel(c)) + ' · ' + group(c.g) + ' · ' + DOW[c.day] + ' ' + ft(c.time) + ' · waiting for the primary or secondary responsible person</div></div></div>').join('') || '<p class="empty">Every class has a teacher.</p>') + '</div></section></div>' +
     '<div class="side">' + coordCard() + '<section class="card"><h2>My action items</h2><div class="rows">' + actionRows(ME.name, true) + '</div></section></div></div>';
+}
+
+/* New students enter the system only here. Location staff register them; the location manager allocates a class. */
+export function viewRegs() {
+  const can = ME.role === 'locadmin'; const regs = S.regs.slice().sort((a, b) => (a.date || '') < (b.date || '') ? -1 : 1);
+  const row = r => '<tr><th scope="row">' + esc(r.name) + (r.notes ? '<div class="sub small" style="font-weight:500;white-space:normal">' + esc(r.notes) + '</div>' : '') + '</th><td>' + group(r.g) + '</td><td>' + esc(course(r.course).name) + '</td><td>' + esc(r.city || '') + '</td><td>' + esc([r.phone, r.email].filter(Boolean).join(' · ')) + '</td><td>' + (r.date ? fd(r.date) : '') + (r.by ? '<div class="sub small">by ' + esc(r.by) + '</div>' : '') + '</td><td><div class="btns">' + (can ? act('allocOpen', r.id, 'Allocate a class', 'btn primary') : '') + act('regRemove', r.id, 'Remove', 'link') + '</div></td></tr>';
+  return '<div class="head"><div><h1>Registrations</h1><div class="sub">Every new student is registered here first, then ' + (can ? 'you allocate' : 'the location manager allocates') + ' them to a class</div></div></div>' +
+    '<div class="cols"><section class="card main"><div class="card-h"><h2>Waiting for a class</h2>' + chip('gold', regs.length + ' waiting') + '</div>' +
+      tbl([['Student'], ['Group'], ['Wants'], ['City'], ['Contact'], ['Registered'], ['']], regs.map(row)) + '</section>' +
+    '<section class="card side"><h2>Register a student</h2><form data-form="regAdd" style="display:flex;flex-direction:column;gap:12px">' +
+      '<div class="field"><label for="rg-n">Full name</label><input id="rg-n" name="name" required></div>' +
+      '<div class="form"><div class="field"><label for="rg-g">Group</label><select id="rg-g" name="g">' + opts([['F', 'Sisters'], ['M', 'Brothers']], 'F') + '</select></div>' +
+      '<div class="field"><label for="rg-c">Course wanted</label><select id="rg-c" name="course">' + opts(S.courses.map(c => [c.code, c.name]), 'INR') + '</select></div></div>' +
+      '<div class="field"><label for="rg-ci">City</label><input id="rg-ci" name="city"></div>' +
+      '<div class="form"><div class="field"><label for="rg-p">Phone or WhatsApp</label><input id="rg-p" name="phone" type="tel" inputmode="tel"></div>' +
+      '<div class="field"><label for="rg-e">Email</label><input id="rg-e" name="email" type="email"></div></div>' +
+      '<div class="field"><label for="rg-no">Notes (optional)</label><textarea id="rg-no" name="notes" rows="2"></textarea></div>' +
+      '<button class="btn primary" type="submit">Register student</button></form></section></div>';
 }

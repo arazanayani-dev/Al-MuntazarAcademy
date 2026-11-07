@@ -34,9 +34,12 @@ const teacherName = (ctx, id) => { const t = ctx.store.find('teachers', id); ret
 const notify = (ctx, to, channel, text) => ctx.store.put('outbox', { id: uid('n'), to, channel, text, created: new Date().toISOString(), sent: false });
 
 /* Re-numbers held sessions of a class 1, 2, 3 … in date order. */
+/* Re-numbers held sessions of the class's current semester 1, 2, 3 … in date order (a class that moved up
+   a semester starts again from week 1 on the day it moved). */
 export function renumber(store, cid) {
   let w = 0;
-  store.all('sessions').filter(x => x.classId === cid).sort((a, b) => a.date < b.date ? -1 : 1).forEach(x => {
+  const c = store.find('classes', cid); const from = (c && c.semStart) || '';
+  store.all('sessions').filter(x => x.classId === cid && x.date >= from).sort((a, b) => a.date < b.date ? -1 : 1).forEach(x => {
     const want = x.held ? ++w : null;
     if (x.week !== want) { x.week = want; store.put('sessions', x); }
   });
@@ -50,7 +53,7 @@ export async function ensureSessions(store, today) {
       if (c.status !== 'active' || !c.teacherId) continue;
       const k = store.find('courses', c.course); if (!k) continue;
       const ss = store.all('sessions').filter(x => x.classId === c.id).sort((a, b) => a.date < b.date ? -1 : 1);
-      let held = ss.filter(x => x.held).length;
+      let held = ss.filter(x => x.held && x.date >= (c.semStart || '')).length;
       let d;
       if (ss.length) d = addDays(ss[ss.length - 1].date, 7);
       else { d = c.startOn || c.createdOn || today; while (pd(d).getDay() !== c.day) d = addDays(d, 1); }
@@ -96,12 +99,59 @@ export const ACTIONS = {
     ctx.store.put('classes', { id, loc, course: k.code, sem: int(a.sem, 1, k.sems, 1), g, teacherId: tid, day: int(a.day, 0, 6, 1), time: int(tm[1], 0, 23, 20) * 60 + int(tm[2], 0, 59, 0), status: tid ? 'active' : 'awaiting', createdBy: ctx.user.name, createdOn: ctx.today, startOn: ctx.today, meet: str(a.meet, 500) });
     return { toast: id + ' created' + (tid ? ' with ' + teacherName(ctx, tid) : ' and saved as awaiting teacher'), result: { id } };
   } },
-  allocSave: { roles: ['locadmin', 'coord'], run(ctx, a) {
+  /* Students enter the system only by registration, entered by location staff. */
+  regAdd: { roles: ['locadmin', 'coord'], run(ctx, a) {
+    const name = str(a.name, 100); need(name, 'Enter the student\'s name.');
+    const k = course(ctx, str(a.course));
+    const email = str(a.email, 200); need(!email || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email), 'That email address does not look right.');
+    ctx.store.put('regs', { id: uid('reg'), loc: ctx.user.loc, name, g: a.g === 'M' ? 'M' : 'F', course: k.code, city: str(a.city, 100), phone: str(a.phone, 40), email, notes: str(a.notes, 1000), date: ctx.today, by: ctx.user.name });
+    return { toast: name + ' registered. The location manager can now allocate a class.' };
+  } },
+  regRemove: { roles: ['locadmin', 'coord'], run(ctx, a) {
+    const r = ctx.store.find('regs', str(a.id)); need(r && r.loc === ctx.user.loc, 'Registration not found.', 404);
+    ctx.store.del('regs', r.id);
+    return { toast: 'Registration for ' + r.name + ' removed' };
+  } },
+  /* Only the location manager (primary or secondary responsible) allocates, to a class in their own location. */
+  allocSave: { roles: ['locadmin'], run(ctx, a) {
     const r = ctx.store.find('regs', str(a.rid)); need(r && r.loc === ctx.user.loc, 'Registration not found.', 404);
-    const c = ctx.store.find('classes', str(a.cid)); need(c, 'Choose a class.'); need(c.g === r.g, 'Choose a ' + (r.g === 'F' ? 'sisters' : 'brothers') + ' class.');
-    ctx.store.put('students', { id: uid('s'), name: r.name, g: r.g, classId: c.id, joined: ctx.today, city: r.city, tzName: 'India', tzOff: 5.5, prefs: { email: true, wa: true, absence: true } });
+    need(a.cid, 'Choose a class.');
+    const c = classIn(ctx, str(a.cid)); need(c.g === r.g, 'Choose a ' + (r.g === 'F' ? 'sisters' : 'brothers') + ' class.');
+    ctx.store.put('students', { id: uid('s'), name: r.name, g: r.g, classId: c.id, joined: ctx.today, since: ctx.today, city: r.city, phone: r.phone || '', email: r.email || '', registered: r.date || ctx.today, tzName: 'India', tzOff: 5.5, prefs: { email: true, wa: true, absence: true } });
     ctx.store.del('regs', r.id);
     return { toast: r.name + ' added to ' + c.id + ' with status New' };
+  } },
+  studentMove: { roles: ['locadmin'], run(ctx, a) {
+    const s = ctx.store.find('students', str(a.sid)); need(s, 'Student not found.', 404);
+    const from = classIn(ctx, s.classId); const to = classIn(ctx, str(a.cid));
+    need(to.id !== from.id, 'The student is already in ' + to.id + '.');
+    need(to.g === s.g, 'Choose a ' + (s.g === 'F' ? 'sisters' : 'brothers') + ' class.');
+    s.history = (s.history || []).concat([{ classId: from.id, until: ctx.today }]);
+    s.classId = to.id; s.since = ctx.today; ctx.store.put('students', s);
+    if (from.assistantId === s.id) { from.assistantId = null; ctx.store.put('classes', from); }
+    return { toast: s.name + ' moved from ' + from.id + ' to ' + to.id };
+  } },
+  classEdit: { roles: ['locadmin', 'coord'], run(ctx, a) {
+    const c = classIn(ctx, str(a.cid));
+    const studs = ctx.store.all('students').filter(s => s.classId === c.id);
+    const started = ctx.store.all('sessions').some(x => x.classId === c.id && x.held && x.logged);
+    const k = course(ctx, str(a.course || c.course)); const g = a.g === 'M' ? 'M' : a.g === 'F' ? 'F' : c.g;
+    if (k.code !== c.course) need(!studs.length && !started, 'The course can only change while the class has no students and no logged sessions.');
+    if (g !== c.g) need(!studs.length, 'The group can only change while the class has no students.');
+    const tm = /^(\d{1,2}):(\d{2})$/.exec(str(a.time)); need(tm, 'Enter the time as hours and minutes.');
+    const sem = int(a.sem, 1, k.sems, c.sem);
+    if (sem !== c.sem || k.code !== c.course) c.semStart = ctx.today;
+    Object.assign(c, { course: k.code, sem, g, day: int(a.day, 0, 6, c.day), time: int(tm[1], 0, 23, 20) * 60 + int(tm[2], 0, 59, 0), meet: str(a.meet, 500) });
+    if (ctx.user.role === 'locadmin' && 'teacher' in a) {
+      if (a.teacher) { const t = ctx.store.find('teachers', str(a.teacher)); need(t && t.g === c.g, 'The teacher must be the same gender as the class.'); c.teacherId = t.id; c.status = 'active'; if (!c.startOn) c.startOn = ctx.today; }
+      else { c.teacherId = null; c.status = 'awaiting'; }
+    }
+    if (c.teacherId && c.teacherId !== null) { const t = ctx.store.find('teachers', c.teacherId); need(!t || t.g === c.g, 'The teacher must be the same gender as the class.'); }
+    if (a.assistant !== undefined) { need(!a.assistant || studs.some(s => s.id === a.assistant), 'The class assistant must be a student in this class.'); c.assistantId = a.assistant || null; }
+    c.editedBy = ctx.user.name; c.editedOn = ctx.today;
+    ctx.store.put('classes', c);
+    renumber(ctx.store, c.id);
+    return { toast: c.id + ' updated' };
   } },
   callSave: { roles: ['locadmin'], run(ctx, a) {
     const l = ctx.store.find('locations', ctx.user.loc); need(l, 'Location not found.');
@@ -130,7 +180,7 @@ export const ACTIONS = {
     if (ctx.user.role === 'student') { const s = student(ctx); c = ctx.store.find('classes', x.classId); need(c && c.assistantId === s.id, 'Only the class assistant can log this session.', 403); }
     else c = classIn(ctx, x.classId);
     need(!x.logged, 'This session is already logged.');
-    const studs = ctx.store.all('students').filter(s => s.classId === c.id && s.joined <= x.date);
+    const studs = ctx.store.all('students').filter(s => s.classId === c.id && (s.since || s.joined) <= x.date);
     x.logged = true; x.held = !!a.held; x.reason = x.held ? '' : str(a.reason, 300); x.verse = str(a.verse, 200); x.note = str(a.note, 2000);
     x.covered = { b: !!(a.covered && a.covered.b), l: !!(a.covered && a.covered.l), e: !!(a.covered && a.covered.e) };
     x.loggedBy = ctx.user.name + (ctx.user.role === 'student' ? ' (assistant)' : ctx.user.role === 'locadmin' ? ' (for the teacher)' : '');

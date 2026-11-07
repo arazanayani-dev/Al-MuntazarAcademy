@@ -252,7 +252,9 @@ tbody tr:hover{background:color-mix(in srgb,var(--accent) 4%,transparent)}
 .login .brandbig{background:linear-gradient(90deg,var(--accent),var(--c2));-webkit-background-clip:text;background-clip:text;color:transparent;font-size:30px}
 .login h1{background:none;color:var(--muted);font-family:var(--body);font-weight:600}
 .toast{background:linear-gradient(135deg,#0F172A,#1E3A8A);color:#fff;box-shadow:0 10px 30px rgba(0,0,0,.3)}
-.cols>.side{position:static;width:auto;max-height:none;min-height:0;padding:0;border:0;background:none;backdrop-filter:none;overflow:visible}
+.cols>.side{position:static;width:auto;max-height:none;min-height:0;backdrop-filter:none;overflow:visible}
+.cols>.side:not(.card){padding:0;border:0;background:none}
+.cols>.side.card{padding:16px;border:1px solid var(--line);background:var(--surface)}
 @media (max-width:600px){.acct .role{display:none}.acct{gap:6px}.acct button{min-height:36px;padding:0 10px}.brand{font-size:19px}}
 /* light / dark switch */
 .theme-btn{display:inline-flex;align-items:center;gap:6px}
