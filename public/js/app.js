@@ -125,7 +125,8 @@ function render() {
   try { body = fn(); } catch (e) { console.error(e); body = '<section class="card"><p class="err">This page could not be shown.</p>' + act('nav', firstTab().role + ':' + firstTab().tab, 'Go to the first page') + '</section>'; }
   app.innerHTML =
     '<header class="bar"><div class="bar-in"><div class="brand">Almuntazar Academy</div>' +
-    '<div class="acct"><span><span class="nm">' + esc(ME.name) + '</span><span class="role"> · ' + esc(ME.label) + '</span></span>' + themeBtn('theme-btn') + act('pwOpen', '', 'Password', '') + act('logout', '', 'Sign out', '') + '</div></div></header>' +
+    '<div class="acct"><span><span class="nm">' + esc(ME.name) + '</span><span class="role"> · ' + esc(ME.label) + '</span></span>' + themeBtn('theme-btn') + act('pwOpen', '', 'Password', '') + (META.open ? '' : act('logout', '', 'Sign out', '')) + '</div></div></header>' +
+    (META.open ? '<div class="note warn-note"><div>Sign-in is switched off (OPEN_ACCESS), so anyone with the link can see and change everything. Use sample data only, and remove the setting in Vercel to bring sign-in back.</div></div>' : '') +
     (META.temporary ? '<div class="note warn-note"><div>No permanent database is connected, so changes here can be lost at any time. Connect Neon Postgres in Vercel to keep them.</div></div>' : '') +
     '<div class="shell' + (showNav ? ' has-nav' : '') + '">' + (showNav ? n.side : '') +
     '<main class="wrap' + (narrow ? ' narrow' : '') + '">' + body + '</main></div>' + (showNav ? n.bar : '');
