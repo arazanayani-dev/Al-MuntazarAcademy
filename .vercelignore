@@ -1,0 +1,6 @@
+data/
+.env
+.env.*
+.showcase-tmp/
+*.log
+test/
