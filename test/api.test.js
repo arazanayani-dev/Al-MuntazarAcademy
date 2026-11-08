@@ -70,8 +70,7 @@ async function login(username, password = PW) {
 
 test('the sign-in page is not told about any accounts', async () => {
   const meta = await (await fetch(base + '/api/meta')).json();
-  assert.deepEqual(Object.keys(meta).sort(), ['maxUpload', 'open', 'setupMessage', 'signedIn', 'temporary', 'today']);
-  assert.equal(meta.open, false);
+  assert.deepEqual(Object.keys(meta).sort(), ['maxUpload', 'setupMessage', 'signedIn', 'temporary', 'today']);
   assert.ok(!JSON.stringify(meta).includes('abbas'));
 });
 
