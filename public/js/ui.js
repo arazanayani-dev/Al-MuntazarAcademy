@@ -8,6 +8,18 @@ export const act = (name, arg, label, cl) => '<button type="button" class="' + (
 export function tbl(head, rows) {
   return '<div class="scroll"><table><thead><tr>' + head.map(h => '<th scope="col"' + (h[1] ? ' class="r"' : '') + '>' + h[0] + '</th>').join('') + '</tr></thead><tbody>' + (rows.join('') || '<tr><td colspan="' + head.length + '" class="sub">Nothing to show.</td></tr>') + '</tbody></table></div>';
 }
+/* Pagination: pageSlice picks the rows for one page, pager draws the controls (nothing when it all fits). */
+export const PAGE_SIZE = 20;
+export function pageSlice(list, page) {
+  const pages = Math.max(1, Math.ceil(list.length / PAGE_SIZE)); const p = Math.min(Math.max(1, +page || 1), pages);
+  return { items: list.slice((p - 1) * PAGE_SIZE, p * PAGE_SIZE), p, pages, total: list.length };
+}
+export function pager(key, pg) {
+  if (pg.pages <= 1) return '';
+  const b = (n, label, off) => '<button type="button" class="btn" data-act="page" data-arg="' + esc(key + '|' + n) + '"' + (off ? ' disabled' : '') + '>' + label + '</button>';
+  return '<nav class="pager" id="pg-' + esc(key) + '" aria-label="Pages"><span class="sub small">' + ((pg.p - 1) * PAGE_SIZE + 1) + '–' + Math.min(pg.p * PAGE_SIZE, pg.total) + ' of ' + pg.total + '</span>' +
+    '<div class="btns">' + b(pg.p - 1, 'Previous', pg.p === 1) + '<span class="small">Page ' + pg.p + ' of ' + pg.pages + '</span>' + b(pg.p + 1, 'Next', pg.p === pg.pages) + '</div></nav>';
+}
 export const pageHead = (title, sub) => '<div><h1>' + title + '</h1>' + (sub ? '<div class="sub">' + sub + '</div>' : '') + '</div>';
 export const isAr = s => /[؀-ۿ]/.test(String(s));
 export const tx = s => isAr(s) ? '<span class="ar-in" lang="ar" dir="rtl">' + esc(s) + '</span>' : esc(s);
@@ -15,6 +27,7 @@ export const stmtList = q => q.stmts && q.stmts.length ? '<ol type="i">' + q.stm
 
 const ICONS = {
   home: '<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>',
+  review: '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16.5 9.5"/>',
   locations: '<path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>',
   masters: '<path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01"/>',
   reports: '<path d="M4 20V11M10 20V5M16 20v-6M21 20H3"/>',
@@ -27,7 +40,7 @@ const ICONS = {
   traditions: '<path d="M6 4h11a2 2 0 0 1 2 2v14l-3-2-3 2-3-2-3 2V6a2 2 0 0 1 2-2zM9 9h6M9 13h4"/>',
   classes: '<circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-5 6-5s6 1.7 6 5M16 5a3 3 0 0 1 0 6M18 15c2 .6 3 2.2 3 5"/>',
   students: '<path d="M2 9l10-5 10 5-10 5zM6 11v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5"/>',
-  regs: '<path d="M15 20H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6M8 8h5M8 12h3"/><circle cx="17" cy="16" r="3"/><path d="M17 14.5v3M15.5 16h3"/>',
+  regs: '<circle cx="10" cy="8" r="4"/><path d="M3 21c0-4 3.1-6 7-6 1.3 0 2.5.2 3.5.6M18 14v6M15 17h6"/>',
   coord: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
   profile: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',

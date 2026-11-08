@@ -10,3 +10,6 @@ export function setSession(me, today, data) {
 }
 
 export function clearSession() { ME = null; }
+
+/* A person can hold several roles; screens read ME.role, set to the role of the page being shown. */
+export function useRole(r) { if (ME && ME.roles && ME.roles.includes(r)) ME.role = r; }

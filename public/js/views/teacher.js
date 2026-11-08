@@ -2,10 +2,11 @@
 import { S, TODAY, ME } from '../state.js';
 import { fd, fdl, addDays } from '/shared/dates.js';
 import { esc, chip, pct, act, pageHead } from '../ui.js';
+import { examRow, chapterRows, chaptersToOpen, readinessOf, readyChip, readinessDetail, itemDetail } from './shared.js';
 import {
   course, classStudents, classAtt, weeksDone, weekLabel, courseLabel, group, topicOf, lesson, nextDate, whenFor, stuStats,
   semResult, best, subName, readAlert, classReading, lastWeek, TG, canSee, matScope, sharesOf, scopes, invited, trWhen, ACCESS,
-  myTeacher, matHref
+  myTeacher, matHref, teacherTitle
 } from '../logic.js';
 
 const meetBtn = c => c.meet
@@ -25,7 +26,7 @@ export function lessonCard(c, week, title) {
     '<div class="min">' + (m('l') || 15) + ' min</div><div><div class="b">Islamic Laws</div><div class="sub small">' + esc(l.l) + '</div></div>' +
     '<div class="min">' + (m('e') || 10) + ' min</div><div><div class="b">Ethics</div><div class="sub small">' + esc(l.e) + '</div></div></div></section>';
 }
-const openBtn = m => { const h = matHref(m); return h ? '<a class="btn" style="display:inline-flex;align-items:center;text-decoration:none" href="' + esc(h) + '" target="_blank" rel="noopener">Open</a>' : act('toast', 'This item has no file attached yet: ' + m.src, 'Open'); };
+const openBtn = m => matHref(m) ? act('readOpen', m.id, 'Read') : act('toast', 'This item has no file attached yet: ' + m.src, 'Read');
 
 function teacherMaterialsCard() {
   const t = myTeacher(); const list = S.materials.filter(m => canSee(t, m)); const mine = scopes(t.id);
@@ -40,6 +41,24 @@ function teacherMaterialsCard() {
 function lessonMaterial(c, week) {
   const t = myTeacher(); const ms = S.materials.filter(m => m.course === c.course && m.sem === c.sem && m.week === week && canSee(t, m));
   return ms.length ? '<section class="card"><div class="eyebrow">Material for this lesson</div><div class="rows">' + ms.map(m => '<div class="row"><div><div class="b">' + esc(m.title) + '</div></div>' + (m.share ? act('shareOpen', m.id, 'Share with class', 'btn primary') : openBtn(m)) + '</div>').join('') + '</div></section>' : '';
+}
+/* Syllabus readiness: for each syllabus of the teacher's classes, its training (the syllabus, then the teacher's
+   guides, books and videos of that subject) is gone through in the app, then the readiness quiz is passed. */
+function readinessCard() {
+  const list = readinessOf(ME.teacherId); if (!list.length) return '';
+  const verb = i => ['youtube', 'drive'].includes(i.kind) ? (i.secs ? 'Continue watching' : 'Watch') : i.secs ? 'Continue reading' : 'Read';
+  const item = i => '<div class="row" style="padding:6px 0"><div><div class="b small">' + (i.done ? '✓ ' : '') + esc(i.title) + ' <span class="sub" style="font-weight:500">' + esc(i.type) + '</span></div>' +
+    '<div class="small ' + (i.done ? 'sub' : 'gold-t') + '">' + itemDetail(i) + '</div></div>' + (i.done ? act('readOpen', i.mid, 'Open', 'btn') : act('readOpen', i.mid, verb(i), 'btn primary')) + '</div>';
+  const quiz = r => r.ready ? '<div class="small" style="color:var(--ok-ink)">Quiz passed with ' + r.best + '% on ' + fd(r.passedOn) + '</div>'
+    : !r.readDone ? '<div class="sub small">The readiness quiz opens once every item above is done.</div>'
+    : !r.quizReady ? chip('mute', 'Quiz being prepared by the academic team')
+    : r.nextTry && r.nextTry > TODAY ? chip('mute', 'Quiz again from ' + fd(r.nextTry)) + ' <span class="sub small">Last score ' + r.lastPct + '%. Go over the material again meanwhile.</span>'
+    : act('tquizStart', r.mid, r.tries ? 'Retake the readiness quiz' : 'Take the readiness quiz', 'btn primary');
+  return '<section class="card"><div class="card-h"><div class="eyebrow">Syllabus readiness</div>' + chip(list.every(r => r.ready) ? 'ok' : 'warn', list.filter(r => r.ready).length + ' of ' + list.length + ' ready') + '</div>' +
+    '<p class="sub small">Before teaching a subject, go through its training in the app: the syllabus, then the teacher\'s guide, books and videos for it. A page counts once it has been on screen for 30 seconds, a video once it has been open for 2 minutes. Then pass the readiness quiz (80%), which includes questions from the teacher\'s guide.</p>' +
+    list.map(r => '<div style="border-top:1px solid var(--line);padding-top:10px;margin-top:10px"><div class="card-h"><div><div class="b">' + esc(r.title) + '</div><div class="sub small">' + esc(matScope(r)) + ' · for ' + esc(r.cids.join(', ')) + '</div></div>' + readyChip(r) + '</div>' +
+      '<div class="meter" aria-hidden="true" style="margin:6px 0"><i style="width:' + Math.round(r.itemsDone / r.items.length * 100) + '%"></i></div>' +
+      '<div class="rows">' + r.items.map(item).join('') + '</div><div class="btns" style="margin-top:8px">' + quiz(r) + '</div></div>').join('') + '</section>';
 }
 function teacherTrainingCard() {
   const tid = ME.teacherId;
@@ -68,6 +87,8 @@ function teacherData() {
     if (st.status === 'followup') attn.push('<div class="row"><div><div class="b">' + esc(s.name) + '</div><div class="small warn-t">Absent ' + st.miss + ' sessions running · escalated to the location admins · ' + c.id + '</div></div></div>');
     for (let sem = 1; sem <= c.sem; sem++) if (S.published[c.id + '|' + sem] && semResult(s.id, c.course, sem) === 'fail') { const f = ['b', 'l', 'e'].filter(k => best(s.id, c.course, sem, k) < 50).map(subName).join(', '); attn.push('<div class="row"><div><div class="b">' + esc(s.name) + '</div><div class="small gold-t">Re-exam due: ' + esc(f) + ', Semester ' + sem + ' · ' + c.id + '</div></div></div>'); }
   }));
+  /* chapters the class has finished whose paper is not open yet */
+  mine.forEach(c => chaptersToOpen(c).forEach(x => attn.push('<div class="row"><div><div class="b">' + c.id + ' · ' + esc(x.k.name) + ' chapter ' + x.n + ' paper is ready to open</div><div class="small gold-t">The class finished the chapter in week ' + x.due.week + ' (' + fd(x.due.on) + ')</div></div>' + act('chWinOpen', c.id + '|' + x.k.key + '|' + x.n, 'Open paper', 'btn primary') + '</div>')));
   mine.forEach(c => {
     const list = classStudents(c.id).filter(s => { const st = stuStats(s).status; return st !== 'risk' && st !== 'followup' && readAlert(s); });
     if (list.length) attn.push('<div class="row"><div><div class="b">Reading: ' + list.length + (list.length === 1 ? ' student' : ' students') + ' below target or not logged for 2 weeks</div><div class="small gold-t">' + list.map(s => esc(s.name)).join(', ') + ' · ' + c.id + '</div></div>' + act('openClass', c.id, 'See figures') + '</div>');
@@ -78,35 +99,37 @@ function teacherData() {
 export function viewTeacherHome() {
   const d = teacherData(); const next = d.next; const t = myTeacher();
   const req = S.trainings.filter(tr => tr.req && tr.date >= TODAY && invited(ME.teacherId, tr) && tr.rsvp[ME.teacherId] !== 'yes').sort((a, b) => a.date < b.date ? -1 : 1)[0];
-  return '<div><div class="sub">Salaamun alaykum</div><h1>' + esc(ME.name) + '</h1></div>' +
+  const unready = readinessOf(ME.teacherId).filter(r => !r.ready);
+  return '<div><div class="sub">Salaamun alaykum</div><h1>' + esc(t ? teacherTitle(t) : ME.name) + '</h1></div>' +
+    (unready.length ? '<section class="card" style="background:var(--warn-tint);border-color:var(--warn-ink)"><div class="eyebrow" style="color:var(--warn-ink)">Get ready to teach</div><div class="rows">' + unready.map(r => '<div class="row" style="border-top:0;padding:0"><div><div class="b">' + esc(r.title) + '</div><div class="small">' + esc(r.cids.join(', ')) + ' · ' + readinessDetail(r) + '</div></div></div>').join('') + '</div>' + act('nav', 'training', 'Open Training', 'btn primary') + '</section>' : '') +
     (req ? '<section class="card" style="background:var(--gold-tint);border-color:var(--gold-ink)"><div class="eyebrow" style="color:var(--gold-ink)">Required training</div><div class="row" style="border-top:0;padding:0"><div><div class="b">' + esc(req.title) + '</div><div class="small gold-t">' + trWhen(req) + ' · not replied yet</div></div>' + act('nav', 'training', 'Open Training', 'btn primary') + '</div></section>' : '') +
     (next ? nextCard(next, t.tzOff ?? 5.5, t.tzName || 'India', '<div class="btns">' + chip('ok', next.id) + chip('ok', courseLabel(next) + ' · ' + group(next.g)) + '</div><div>' + esc(topicOf(next)) + ' · ' + weekLabel(next, Math.min(weeksDone(next.id) + 1, course(next.course).weeks)) + '</div>') +
-      lessonCard(next, weeksDone(next.id) + 1, "This week's lesson") + lessonMaterial(next, weeksDone(next.id) + 1) : '<section class="card"><p class="empty">You have no active classes yet.</p></section>') +
-    '<section class="card"><div class="card-h"><div class="eyebrow">To log</div>' + (d.tolog.length ? chip('warn', d.tolog.length + ' waiting') : chip('ok', 'All logged')) + '</div><div class="rows">' +
+      lessonCard(next, weeksDone(next.id) + 1, "This week's lesson") + lessonMaterial(next, weeksDone(next.id) + 1) : '<section class="card"><p class="empty">No classes are assigned to you yet. They appear here as soon as your location assigns one.</p></section>') +
+    /* Logging, follow-up and the logging notice only apply once the teacher has a class. */
+    (d.mine.length ? '<section class="card"><div class="card-h"><div class="eyebrow">To log</div>' + (d.tolog.length ? chip('warn', d.tolog.length + ' waiting') : chip('ok', 'All logged')) + '</div><div class="rows">' +
       (d.tolog.map(x => '<div class="row"><div><div class="b">' + x.classId + ' · Week ' + x.week + '</div><div class="sub small">' + fdl(x.date) + ' · not logged yet</div></div>' + act('logOpen', x.id, 'Log now', 'btn primary') + '</div>').join('') || '<p class="empty">Every session is logged.</p>') + '</div></section>' +
     '<section class="card"><div class="eyebrow">Students needing attention</div><div class="rows">' + (d.attn.join('') || '<p class="empty">Nobody needs follow-up.</p>') + '</div></section>' +
-    '<section class="card"><div class="eyebrow">Notices</div><div><div class="b">From coordination</div><div class="sub">Please log each session within two days of the class.</div></div></section>';
+    '<section class="card"><div class="eyebrow">Notices</div><div><div class="b">From coordination</div><div class="sub">Please log each session within two days of the class.</div></div></section>' : '');
 }
 export function viewTeacherClasses() {
   const d = teacherData();
+  if (!d.mine.length) return pageHead('My classes', 'No classes yet') + '<section class="card"><p class="empty">No classes are assigned to you yet. They appear here as soon as your location assigns one.</p></section>';
   return pageHead('My classes', d.mine.length + (d.mine.length === 1 ? ' class' : ' classes')) +
-    '<section class="card"><div class="eyebrow">Classes</div><div class="rows">' + (d.mine.map(c => { const w = weeksDone(c.id); const k = course(c.course); return '<div class="row"><div><div class="b">' + act('openClass', c.id, c.id, 'link') + '</div><div class="sub small">' + classStudents(c.id).length + ' students · ' + pct(classAtt(c.id, addDays(TODAY, -28))) + ' attendance, last 4 weeks</div><div class="meter" aria-hidden="true"><i style="width:' + Math.round(w / k.weeks * 100) + '%"></i></div><div class="small">Syllabus chart: ' + (w ? weekLabel(c, w) : 'Not started') + '</div></div></div>'; }).join('') || '<p class="empty">No classes yet.</p>') + '</div></section>' +
-    '<section class="card"><div class="eyebrow">Exams and results</div><div class="rows">' + d.mine.map(c => {
-      const ex = S.exams.filter(e => e.course === c.course && e.sem === c.sem); const open = ex.some(e => e.open); const ids = classStudents(c.id).map(s => s.id);
-      const n = ex.map(e => S.results.filter(r => ids.includes(r.sid) && r.course === e.course && r.sem === e.sem && r.sub === e.sub).length);
-      return '<div class="row"><div><div class="b">' + c.id + ' · Semester ' + c.sem + ' exams</div><div class="sub small">' + (ex.length ? (open ? 'Open now · taken so far: ' + ex.map((e, i) => subName(e.sub) + ' ' + n[i]).join(', ') : 'Window opens ' + fd(ex[0].from) + ', closes ' + fd(ex[0].to)) : 'Not scheduled yet') + '</div></div></div>' +
+    '<section class="card"><div class="eyebrow">Classes</div><div class="rows">' + (d.mine.map(c => { const w = weeksDone(c.id); const k = course(c.course); return '<div class="row"><div><div class="b">' + act('openClass', c.id, c.id, 'link') + '</div><div class="sub small">' + classStudents(c.id).length + ' students · ' + pct(classAtt(c.id, addDays(TODAY, -28))) + ' attendance, last 4 weeks</div><div class="meter" aria-hidden="true"><i style="width:' + Math.round(w / k.weeks * 100) + '%"></i></div><div class="small">Syllabus chart: ' + (w ? weekLabel(c, w) : 'Not started') + '</div>' + readinessOf(ME.teacherId).filter(r => r.cids.includes(c.id) && !r.ready).map(r => '<div class="small warn-t">Not ready to teach ' + esc(r.title) + ' yet · ' + act('nav', 'training', 'Get ready', 'link') + '</div>').join('') + '</div></div>'; }).join('') || '<p class="empty">No classes yet.</p>') + '</div></section>' +
+    '<section class="card"><div class="eyebrow">Exams and results</div><div class="sub small">You open each class\'s semester exams, and each chapter paper of each subject, for the days the class will sit them; a chapter paper is usually opened once the class has finished that chapter. Students see a Start button only while it is open.</div><div class="rows">' + d.mine.map(c => {
+      return examRow(c) + chapterRows(c) +
         (c.sem > 1 ? '<div class="row"><div><div class="b">' + c.id + ' · Semester ' + (c.sem - 1) + ' marksheet</div></div>' + act('marks', c.id + '|' + (c.sem - 1), 'View') + '</div>' : '');
     }).join('') + '</div></section>' + teacherReadingCard(d.mine);
 }
 export function viewTeacherMaterials() { return pageHead('Materials', 'From the academy library, by your access level') + teacherMaterialsCard(); }
-export function viewTeacherTraining() { return pageHead('Training', 'Programmes and refreshers from the academic team') + teacherTrainingCard(); }
+export function viewTeacherTraining() { return pageHead('Training', 'Syllabus readiness, programmes and refreshers from the academic team') + readinessCard() + teacherTrainingCard(); }
 export function viewTeacherProfile() {
   const t = myTeacher(); const mine = S.classes.filter(c => c.teacherId === t.id);
   const past = S.trainings.filter(tr => tr.date < TODAY && invited(t.id, tr)); const att = past.filter(tr => tr.attended && tr.attended[t.id]);
   const reqPast = past.filter(tr => tr.req); const reqAtt = reqPast.filter(tr => tr.attended && tr.attended[t.id]);
   const r = (l, v) => '<div class="row"><div class="sub">' + l + '</div><div class="b">' + v + '</div></div>';
   const locs = [...new Set(mine.map(c => c.loc))].map(code => (S.locations.find(l => l.code === code) || {}).name || code).join(', ');
-  return pageHead(esc(ME.name), 'Teacher' + (locs ? ' · ' + esc(locs) : '')) +
+  return pageHead(esc(teacherTitle(t)), 'Teacher' + (locs ? ' · ' + esc(locs) : '')) +
     '<section class="card"><div class="eyebrow">Details</div><div class="rows">' + r('Location', esc(locs || 'Not assigned yet')) + r('Teaches', group(t.g)) + r('Classes', mine.map(c => c.id).join(', ') || 'None yet') + r('Time zone', esc(t.tzName || 'India')) + r('Material access', esc(ACCESS[t.access])) + '</div><p class="sub small">Access is set by the academic team or the super admin.</p></section>' +
     '<section class="card"><div class="eyebrow">Training record</div><div class="tiles" style="grid-template-columns:repeat(2,minmax(0,1fr))"><div><div class="t-v">' + att.length + ' of ' + past.length + '</div><div class="t-s">Programmes attended</div></div><div><div class="t-v">' + reqAtt.length + ' of ' + reqPast.length + '</div><div class="t-s">Required refreshers attended</div></div></div>' +
       '<p class="sub small">This record counts in the teacher performance report.</p></section>' +

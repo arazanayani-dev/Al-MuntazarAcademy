@@ -4,8 +4,8 @@
   "outputDirectory": "public",
   "functions": {
     "api/index.js": {
-      "includeFiles": "public/**",
-      "maxDuration": 30
+      "includeFiles": "{public/**,node_modules/pdfjs-dist/build/**}",
+      "maxDuration": 300
     }
   },
   "rewrites": [{ "source": "/(.*)", "destination": "/api" }]

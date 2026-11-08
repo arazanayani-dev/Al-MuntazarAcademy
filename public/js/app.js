@@ -1,34 +1,41 @@
 /* App shell: sign-in, navigation, rendering, and the wiring from buttons and forms to the server. */
-import { S, ME, TODAY, setSession, clearSession } from './state.js';
-import { addDays } from '/shared/dates.js';
+import { S, ME, TODAY, setSession, clearSession, useRole } from './state.js';
+import { addDays, pd, DOWL } from '/shared/dates.js';
 import { esc, act, icon } from './ui.js';
-import { cls, verseRef, versesBefore } from './logic.js';
-import { viewSuperHome, viewLocations, viewMasters, viewUsers, viewReports } from './views/admin.js';
-import { viewChart, viewBank, viewExams, viewTraditions, viewMaterials, viewTraining } from './views/academic.js';
-import { viewLocHome, viewClasses, viewStudents, viewCoord, viewCoordHome, viewRegs } from './views/location.js';
+import { cls, verseRef, versesBefore, classStudents, semResult, moveTargets, ended, assignable, readKind, myLoc, levelRank } from './logic.js';
+import { viewSuperHome, viewLocations, viewAllClasses, viewMasters, viewUsers, viewReports } from './views/admin.js';
+import { viewChart, viewBank, viewExams, viewTraditions, viewMaterials, viewTraining, viewReview, viewTeachingLevels } from './views/academic.js';
+import { viewLocHome, viewRegistrations, viewClasses, viewStudents, viewCoord, viewCoordHome } from './views/location.js';
 import { viewTeacherHome, viewTeacherClasses, viewTeacherMaterials, viewTeacherTraining, viewTeacherProfile } from './views/teacher.js';
 import { viewStudentHome, viewStudentExams, viewStudentMaterials, viewStudentProfile } from './views/student.js';
-import { viewClass, viewMarks, viewLog, viewExamTake, examCount } from './views/shared.js';
+import { viewClass, viewMarks, viewLog, viewExamTake, examCount, viewRead } from './views/shared.js';
 import { modalHtml } from './views/modals.js';
+import { EDIT } from './views/edit.js';
+import { showPdf } from './pdfview.js';
+import { trackReading, stopReading } from './readtrack.js';
+import { chapterWindow, CHAPTER_DAYS } from '/shared/grading.js';
+import { callPeople, callMinutes } from '/shared/callpeople.js';
 
 const TABS = {
-  super: [['home', 'Overview'], ['locations', 'Locations'], ['masters', 'Master lists', 'Masters'], ['users', 'User accounts', 'Users'], ['reports', 'Reports']],
-  academic: [['chart', 'Syllabus chart', 'Chart'], ['bank', 'Question bank', 'Questions'], ['exams', 'Exams'], ['materials', 'Materials'], ['training', 'Training'], ['traditions', 'Traditions']],
-  locadmin: [['home', 'Overview'], ['regs', 'Registrations', 'Register'], ['classes', 'Classes'], ['students', 'Students'], ['coord', 'Coordination', 'Calls']],
-  coord: [['home', 'Overview'], ['regs', 'Registrations', 'Register'], ['classes', 'Classes'], ['students', 'Students']],
+  super: [['home', 'Overview'], ['regs', 'Registrations'], ['coord', 'Coordination'], ['locations', 'Locations'], ['classes', 'Classes'], ['masters', 'Master lists', 'Masters'], ['users', 'People and logins', 'People'], ['reports', 'Reports']],
+  acmaker: [['teachers', 'Teaching levels', 'Teachers'], ['chart', 'Syllabus chart', 'Chart'], ['bank', 'Question bank', 'Questions'], ['exams', 'Exam papers', 'Papers'], ['materials', 'Materials'], ['training', 'Training'], ['traditions', 'Traditions']],
+  academic: [['review', 'Approvals'], ['teachers', 'Teaching levels', 'Teachers'], ['bank', 'Question bank', 'Questions'], ['exams', 'Exam papers', 'Papers'], ['materials', 'Materials'], ['training', 'Training'], ['traditions', 'Traditions'], ['chart', 'Syllabus chart', 'Chart']],
+  locadmin: [['home', 'Overview'], ['regs', 'Registrations'], ['classes', 'Classes'], ['students', 'Students'], ['coord', 'Coordination']],
+  coord: [['home', 'Overview'], ['regs', 'Registrations'], ['classes', 'Classes'], ['students', 'Students'], ['coord', 'Coordination']],
   teacher: [['home', 'Home'], ['classes', 'Classes'], ['materials', 'Materials'], ['training', 'Training'], ['profile', 'Profile']],
   student: [['home', 'Home'], ['exams', 'Exams'], ['materials', 'Materials'], ['profile', 'Profile']]
 };
 const VIEWS = {
-  'super.home': viewSuperHome, 'super.locations': viewLocations, 'super.masters': viewMasters, 'super.users': viewUsers, 'super.reports': viewReports,
-  'academic.chart': viewChart, 'academic.bank': viewBank, 'academic.exams': viewExams, 'academic.traditions': viewTraditions, 'academic.materials': viewMaterials, 'academic.training': viewTraining,
-  'locadmin.home': viewLocHome, 'locadmin.regs': viewRegs, 'locadmin.classes': viewClasses, 'locadmin.students': viewStudents, 'locadmin.coord': viewCoord,
-  'coord.home': viewCoordHome, 'coord.regs': viewRegs, 'coord.classes': viewClasses, 'coord.students': viewStudents,
+  'super.home': viewSuperHome, 'super.regs': viewRegistrations, 'super.coord': viewCoord, 'super.locations': viewLocations, 'super.classes': viewAllClasses, 'super.masters': viewMasters, 'super.users': viewUsers, 'super.reports': viewReports,
+  'academic.review': viewReview, 'academic.teachers': viewTeachingLevels, 'acmaker.teachers': viewTeachingLevels, 'academic.chart': viewChart, 'academic.bank': viewBank, 'academic.exams': viewExams, 'academic.traditions': viewTraditions, 'academic.materials': viewMaterials, 'academic.training': viewTraining,
+  'acmaker.chart': viewChart, 'acmaker.bank': viewBank, 'acmaker.exams': viewExams, 'acmaker.traditions': viewTraditions, 'acmaker.materials': viewMaterials, 'acmaker.training': viewTraining,
+  'locadmin.home': viewLocHome, 'locadmin.regs': viewRegistrations, 'locadmin.classes': viewClasses, 'locadmin.students': viewStudents, 'locadmin.coord': viewCoord,
+  'coord.home': viewCoordHome, 'coord.regs': viewRegistrations, 'coord.classes': viewClasses, 'coord.students': viewStudents, 'coord.coord': viewCoord,
   'teacher.home': viewTeacherHome, 'teacher.classes': viewTeacherClasses, 'teacher.materials': viewTeacherMaterials, 'teacher.training': viewTeacherTraining, 'teacher.profile': viewTeacherProfile,
   'student.home': viewStudentHome, 'student.exams': viewStudentExams, 'student.materials': viewStudentMaterials, 'student.profile': viewStudentProfile
 };
-const SHARED = { class: viewClass, marks: viewMarks, log: viewLog, exam: viewExamTake };
-let META = { demo: false };
+const SHARED = { class: viewClass, marks: viewMarks, log: viewLog, exam: viewExamTake, read: viewRead };
+let META = {};
 let busy = false;
 
 /* ---------- server ---------- */
@@ -47,7 +54,8 @@ async function api(method, url, body) {
   return j;
 }
 async function call(name, args) {
-  const j = await api('POST', '/api/action/' + name, args || {});
+  /* the server runs the action as the role of the page it came from */
+  const j = await api('POST', '/api/action/' + name, Object.assign({}, args || {}, { as: ME && ME.role }));
   setSession(j.me, j.today, j.data);
   if (j.toast) toast(j.toast);
   return j.result;
@@ -74,11 +82,19 @@ if (window.matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListen
 });
 
 /* ---------- rendering ---------- */
+/* Every page of every role the person holds, as role:tab, in role order (most senior first). */
+const ROLE_NAMES = { super: 'Super admin', acmaker: 'Academic content creator', academic: 'Academic content approver', locadmin: 'Location responsible', coord: 'Coordinator', trainer: 'Teacher training faculty', social: 'Social media content creator', support: 'Systems support', teacher: 'Teacher', student: 'Student' };
+const myTabs = () => (ME.roles || [ME.role]).filter(r => TABS[r]).flatMap(r => TABS[r].map(t => ({ role: r, key: r + ':' + t[0], tab: t[0], label: t[1], short: t[2] || t[1] })));
+const firstTab = () => myTabs()[0] || { role: ME.role, tab: 'home' };
+/* the role whose pages are showing; it decides what the screens and actions do */
+function activeRole() { if (!S.role || !(ME.roles || []).includes(S.role) || !TABS[S.role]) S.role = firstTab().role; useRole(S.role); return S.role; }
+
 function navHtml() {
-  const tabs = TABS[ME.role]; const cur = S.tab || tabs[0][0];
-  const b = (t, cl) => '<button type="button" class="' + cl + '" data-act="nav" data-arg="' + t[0] + '"' + (cur === t[0] ? ' aria-current="page"' : '') + '>' + icon(t[0]) + '<span>' + (cl === 'bt' ? (t[2] || t[1]) : t[1]) + '</span></button>';
-  const side = '<nav class="side" aria-label="Menu"><div class="side-who"><div class="b">' + esc(ME.name) + '</div><div class="sub small">' + esc(ME.label) + '</div></div>' + tabs.map(t => b(t, 'navi')).join('') + '</nav>';
-  const many = tabs.length > 5; const shown = many ? tabs.slice(0, 4) : tabs; const rest = many ? tabs.slice(4) : []; const inRest = rest.some(t => t[0] === cur);
+  const tabs = myTabs(); const cur = S.tab || (tabs[0] && tabs[0].key); const groups = [...new Set(tabs.map(t => t.role))];
+  const b = (t, cl) => '<button type="button" class="' + cl + '" data-act="nav" data-arg="' + t.key + '"' + (cur === t.key ? ' aria-current="page"' : '') + '>' + icon(t.tab) + '<span>' + (cl === 'bt' ? t.short : t.label) + '</span></button>';
+  const side = '<nav class="side" aria-label="Menu"><div class="side-who"><div class="b">' + esc(ME.name) + '</div><div class="sub small">' + esc(ME.label) + '</div></div>' +
+    groups.map(g => (groups.length > 1 ? '<div class="eyebrow navg">' + esc((ME.labels && ME.labels[g]) || ROLE_NAMES[g]) + '</div>' : '') + tabs.filter(t => t.role === g).map(t => b(t, 'navi')).join('')).join('') + '</nav>';
+  const many = tabs.length > 5; const shown = many ? tabs.slice(0, 4) : tabs; const rest = many ? tabs.slice(4) : []; const inRest = rest.some(t => t.key === cur);
   const bar = '<nav class="tabbar" aria-label="Menu">' + shown.map(t => b(t, 'bt')).join('') +
     (many ? '<button type="button" class="bt" data-act="more" aria-expanded="' + !!S.more + '"' + (inRest ? ' aria-current="page"' : '') + '>' + icon('more') + '<span>More</span></button>' : '') + '</nav>' +
     (many && S.more ? '<div class="more-sheet">' + rest.map(t => b(t, 'navi')).join('') + '</div>' : '');
@@ -101,38 +117,60 @@ function loginHtml() {
 function render() {
   const app = document.getElementById('app');
   if (!ME) { app.innerHTML = loginHtml(); document.getElementById('modal-root').innerHTML = ''; return; }
-  const fn = SHARED[S.view] || VIEWS[ME.role + '.' + S.view] || VIEWS[ME.role + '.' + TABS[ME.role][0][0]];
+  const role = activeRole();
+  const fn = SHARED[S.view] || VIEWS[role + '.' + S.view] || VIEWS[firstTab().role + '.' + firstTab().tab] || (() => '<section class="card"><p class="empty">There are no pages for your roles yet.</p></section>');
   const narrow = ME.role === 'teacher' || ME.role === 'student' || S.view === 'log' || S.view === 'exam';
   const showNav = S.view !== 'exam'; const n = navHtml();
   let body;
-  try { body = fn(); } catch (e) { console.error(e); body = '<section class="card"><p class="err">This page could not be shown.</p>' + act('nav', TABS[ME.role][0][0], 'Go to the first page') + '</section>'; }
+  try { body = fn(); } catch (e) { console.error(e); body = '<section class="card"><p class="err">This page could not be shown.</p>' + act('nav', firstTab().role + ':' + firstTab().tab, 'Go to the first page') + '</section>'; }
   app.innerHTML =
     '<header class="bar"><div class="bar-in"><div class="brand">Almuntazar Academy</div>' +
     '<div class="acct"><span><span class="nm">' + esc(ME.name) + '</span><span class="role"> · ' + esc(ME.label) + '</span></span>' + themeBtn('theme-btn') + act('pwOpen', '', 'Password', '') + act('logout', '', 'Sign out', '') + '</div></div></header>' +
-    (META.temporary ? '<div class="note warn-note"><div>No permanent database is connected, so changes here can be lost at any time. Connect Neon Postgres in Vercel to keep them.</div></div>' : META.demo ? '<div class="note"><div>Sample data is loaded · reset it with <code>npm run seed -- --reset</code></div></div>' : '') +
+    (META.temporary ? '<div class="note warn-note"><div>No permanent database is connected, so changes here can be lost at any time. Connect Neon Postgres in Vercel to keep them.</div></div>' : '') +
     '<div class="shell' + (showNav ? ' has-nav' : '') + '">' + (showNav ? n.side : '') +
     '<main class="wrap' + (narrow ? ' narrow' : '') + '">' + body + '</main></div>' + (showNav ? n.bar : '');
   document.getElementById('modal-root').innerHTML = modalHtml();
+  document.querySelectorAll('[data-pdf]').forEach(showPdf); /* reading page: draw the PDF inside the app */
+  document.querySelectorAll('[data-track]').forEach(trackReading); /* and keep a teacher's reading record */
+  /* while questions are being drafted in the background, refresh every few seconds to show progress */
+  if (!refreshTimer && (S.materials || []).some(m => m.qgen && /queued|running/.test(m.qgen.status))) {
+    refreshTimer = setTimeout(async () => { refreshTimer = null; if (!ME || S.modal || S.draft || S.exam) return; try { await loadData(); render(); } catch { /* signed out or offline */ } }, 5000);
+  }
 }
+let refreshTimer = null;
+/* after the reading page: save the last seconds of the reading record, then fetch the updated progress */
+async function leftReader() { try { await stopReading(); await loadData(); } catch { /* offline */ } }
 
 let toastTimer;
-function toast(t) { const el = document.getElementById('toast'); el.textContent = t; el.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.hidden = true; }, 4000); }
-function go(view, p) { S.view = view; S.p = p || {}; S.more = false; if (TABS[ME.role].some(t => t[0] === view)) S.tab = view; window.scrollTo(0, 0); }
+function toast(t) { const el = document.getElementById('toast'); el.textContent = t; el.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.hidden = true; }, Math.max(4000, t.length * 70)); /* long enough to read */ }
+/* go('classes') stays in the current role; go('teacher:classes') switches to that role's page */
+function go(view, p) {
+  let role = S.role || firstTab().role;
+  if (view.includes(':')) { [role, view] = view.split(':'); }
+  S.role = role; useRole(role); S.view = view; S.p = p || {}; S.more = false;
+  if ((TABS[role] || []).some(t => t[0] === view)) S.tab = role + ':' + view;
+  window.scrollTo(0, 0);
+}
+const goFirst = () => go(firstTab().role + ':' + firstTab().tab);
 function setPath(path, val) { const k = path.split('.'); let o = S; for (let i = 0; i < k.length - 1; i++) { if (o[k[i]] == null) o[k[i]] = {}; o = o[k[i]]; } o[k[k.length - 1]] = val; }
-function resetUi() { Object.assign(S, { view: 'home', p: {}, modal: null, draft: null, exam: null, form: {}, back: null, tab: null, more: false }); }
+function resetUi() { Object.assign(S, { view: 'home', p: {}, modal: null, draft: null, exam: null, form: {}, back: null, tab: null, role: null, more: false }); }
 
 /* ---------- button actions ---------- */
 const A = {
-  nav(v) { S.back = null; go(v); },
+  async nav(v) { const left = S.view === 'read'; S.back = null; go(v); if (left) await leftReader(); },
   more() { S.more = !S.more; },
   theme() { setTheme(themeNow() === 'dark' ? 'light' : 'dark', true); },
   async logout() { await api('POST', '/api/logout'); clearSession(); resetUi(); },
   rdWeek(w) { S.form.rd.week = w; },
   toast(t) { toast(t); },
-  back() { const b = S.back; S.back = null; if (b) go(b.view, b.p); else go(TABS[ME.role][0][0]); },
+  async back() { const left = S.view === 'read'; const b = S.back; S.back = null; if (b) go(b.view, b.p); else goFirst(); if (left) await leftReader(); },
   report(code) { go('reports', { report: 'location', loc: code }); },
   openClass(cid) { S.back = { view: S.view, p: S.p }; go('class', { cid }); },
   marks(arg) { const a = arg.split('|'); S.back = { view: S.view, p: S.p }; go('marks', { cid: a[0], sem: +a[1] }); },
+  page(arg) {
+    const i = arg.lastIndexOf('|'); const key = arg.slice(0, i); S.p['pg_' + key] = +arg.slice(i + 1);
+    setTimeout(() => { const el = document.getElementById('pg-' + key); const card = el && el.closest('.card'); if (card) card.scrollIntoView({ block: 'start' }); }, 0);
+  },
   range(arg) { S.p.to = TODAY; S.p.from = addDays(TODAY, -(+arg)); },
   csv() {
     const rows = S.form.crCsv || []; const q = v => '"' + String(v).replace(/"/g, '""') + '"';
@@ -144,35 +182,187 @@ const A = {
   userResetOpen(id) { S.modal = { t: 'userReset', id }; },
   qEdit(id) { S.form.qb.edit = id; setTimeout(() => { const el = document.getElementById('q-form'); if (el && el.scrollIntoView) el.scrollIntoView({ block: 'start' }); }, 0); },
   qEditCancel() { S.form.qb.edit = null; },
-  importOpen() { S.modal = { t: 'import', step: 0 }; },
-  async importRun() {
-    S.paper = S.paper || await api('GET', '/api/sample-paper');
-    S.form.imp = S.paper.questions.map(q => Object.assign({}, q, { include: q.type !== 'bank' && q.correct !== '' }));
+  importOpen() { S.paper = null; S.modal = { t: 'import', step: 0 }; },
+  /* the questions read from the paper, ticked when they can be imported and their answer was found */
+  importReview(paper) {
+    S.paper = paper;
+    S.form.imp = paper.questions.map(q => Object.assign({}, q, { include: q.type !== 'bank' && q.type !== 'other' && q.correct !== '' }));
     S.modal = { t: 'import', step: 1 };
   },
-  async importSave() { const f = S.form.qb; await call('importSave', { course: f.course, sem: f.sem, sub: f.sub, items: S.form.imp.map((q, idx) => ({ idx, include: q.include, correct: q.correct })) }); S.modal = null; },
+  async importRun() { const p = await api('GET', '/api/sample-paper'); A.importReview(Object.assign({}, p, { sample: true })); },
+  async importUpload() {
+    const el = document.getElementById('im-f'); const file = el && el.files && el.files[0];
+    if (!file) throw new ApiError('Choose the Word file first.');
+    const r = await fetch('/api/paper', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/octet-stream', 'X-Filename': encodeURIComponent(file.name) }, body: file });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new ApiError(j.error || 'The paper could not be read.');
+    A.importReview(j);
+  },
+  async importSave() {
+    const f = S.form.qb; const sample = S.paper && S.paper.sample;
+    await call('importSave', { course: f.course, sem: f.sem, sub: f.sub, items: S.form.imp.map((q, idx) => sample ? { idx, include: q.include, correct: q.correct } : { include: q.include, correct: q.correct, q: { type: q.type, text: q.text, options: q.options, stmts: q.stmts } }) });
+    S.modal = null;
+  },
   shareOpen(mid) { const mt = S.materials.find(x => x.id === mid); const mine = S.classes.filter(c => c.teacherId === ME.teacherId && (mt.course === 'ALL' || (c.course === mt.course && (!mt.sem || c.sem === mt.sem)))); S.form = { cid: mine.length ? mine[0].id : '' }; S.modal = { t: 'share', mid }; },
   async shareSave(mid) { await call('shareSave', { mid, cid: S.form.cid }); S.modal = null; },
   async rsvp(arg) { const a = arg.split('|'); await call('rsvp', { id: a[0], answer: a[1] }); },
   async publish(key) { await call('publish', { key }); },
   async remind(id) { await call('remind', { id }); },
   async chartLoad(key) { await call('chartLoad', { key }); },
-  async qRetire(id) { if (confirm('Retire this question? It will not be used in new exams.')) await call('qRetire', { id }); },
-  async examToggle(id) { await call('examToggle', { id }); },
+  /* the dialog on screen changes before the action runs, so that if the action is refused the message shows on
+     what is really open and nothing is left stuck */
+  async confirmYes() { const m = S.modal; S.modal = m.back || null; document.getElementById('modal-root').innerHTML = modalHtml(); await A[m.act](m.arg, null, null, true); },
+  confirmNo() { S.modal = S.modal && S.modal.back || null; },
+  async qRetire(id, _el, _ev, yes) { if (!yes) return sure('Retire this question? It will not be used in new exams.', 'Retire', 'qRetire', id); await call('qRetire', { id }); },
+  examWinOpen(cid) { const c = cls(cid); const e = c.exam && c.exam.sem === c.sem && !c.exam.closed ? c.exam : null; S.form = { from: e ? e.from : TODAY, to: e ? e.to : addDays(TODAY, 6) }; S.modal = { t: 'examWin', cid }; },
+  async examWinSave(cid) { await call('examOpen', { cid, from: S.form.from, to: S.form.to }); S.modal = null; },
+  /* a chapter paper's window for one class: arg is class|subject|chapter */
+  chWinOpen(arg) {
+    const [cid, sub, n] = arg.split('|'); const c = cls(cid); const w = chapterWindow(c, sub, +n); const live = w && !w.closed && w.to >= TODAY;
+    S.form = { from: live ? w.from : TODAY, to: live ? w.to : addDays(TODAY, CHAPTER_DAYS - 1) }; S.modal = { t: 'chWin', cid, sub, n: +n };
+  },
+  async chWinSave() { const m = S.modal; await call('chapterOpen', { cid: m.cid, sub: m.sub, n: m.n, from: S.form.from, to: S.form.to }); S.modal = null; },
+  async chCloseNow(arg, _el, _ev, yes) {
+    const [cid, sub, n] = arg.split('|');
+    if (!yes) return sure('Close this chapter paper for ' + cid + ' now? Students who have not taken it will not be able to, and it counts as 0 for them.', 'Close paper', 'chCloseNow', arg);
+    await call('chapterClose', { cid, sub, n: +n });
+  },
+  async examCloseNow(cid, _el, _ev, yes) { if (!yes) return sure('Close the exam window for ' + cid + ' now? Students who have not taken an exam will not be able to.', 'Close window', 'examCloseNow', cid); await call('examClose', { cid }); },
+  chartEdit(key) {
+    const [co, sem] = key.split('-'); const k = S.courses.find(c => c.code === co) || { weeks: 1 };
+    const base = (S.chartDrafts || {})[key] || (S.chartData || {})[key] || {}; const col = sub => Array.from({ length: k.weeks }, (_, i) => (base[sub] || [])[i] || '');
+    S.form.ch = { b: col('b'), l: col('l'), e: col('e') }; S.p = Object.assign({}, S.p, { course: co, sem: +sem, edit: true });
+  },
+  chartEditCancel() { S.p.edit = false; },
+  async chartSaveNow(key) { await call('chartSave', Object.assign({ key }, S.form.ch)); S.p.edit = false; },
+  /* open a material on the in-app reading page; a Word file's text is fetched first */
+  async readOpen(arg) {
+    const [mid, which] = arg.split('|'); const base = S.materials.find(x => x.id === mid); if (!base) return;
+    const draft = which === 'draft' && base.draft; const m = draft ? Object.assign({}, base, base.draft) : base; /* the approver reads an update before approving it */
+    S.reader = { mid };
+    if (readKind(m) === 'word') { try { S.reader.paras = (await api('GET', '/files/' + m.fileId + '/text')).paragraphs; } catch (e) { S.reader.err = e.message; } }
+    S.back = { view: S.view, p: S.p }; go('read', { mid, draft: !!draft });
+  },
+  async nominate(arg) { const p = arg.split('|'); await call('levelNominate', { sid: p[0], level: p[1] }); },
+  excOpen(sid) { S.form = Object.assign({}, S.form, { sid: '', level: '', reason: '' }); S.modal = { t: 'levelExc', sid: sid || '' }; },
+  async excSave() {
+    const sid = S.modal.sid || S.form.sid; if (!sid) throw new ApiError('Choose the student.'); if (!S.form.level) throw new ApiError('Choose the level.');
+    await call('levelNominate', { sid, level: S.form.level, exception: true, reason: S.form.reason }); S.modal = null;
+  },
+  async nominateTeacher(tid) { const t = S.teachers.find(x => x.id === tid); await call('levelNominate', { sid: t.sid, level: S.form.tl.to[tid] }); },
+  async approve(arg) { const i = arg.indexOf('|'); await call('review', { kind: arg.slice(0, i), id: arg.slice(i + 1), decision: 'approve' }); },
+  async approveMany(ids) { await call('reviewMany', { ids: ids.split(','), decision: 'approve' }); },
+  sendBackManyOpen(ids) { S.form = { note: '' }; S.modal = { t: 'sendBack', many: ids.split(','), who: 'The content creator' }; },
+  sendBackOpen(arg) { const p = arg.split('|'); S.form = { note: '' }; S.modal = { t: 'sendBack', kind: p[0], id: p[1], who: p[2] }; },
+  async sendBackSave() { const m = S.modal; if (m.many) await call('reviewMany', { ids: m.many, decision: 'reject', note: S.form.note }); else await call('review', { kind: m.kind, id: m.id, decision: 'reject', note: S.form.note }); S.modal = null; },
+  async qgenRetry(arg) { const [id, part] = arg.split('|'); await call('qgenRetry', { id, part }); },
   async closeAction(id) { await call('closeAction', { id }); },
   async userToggle(id) { await call('userToggle', { id }); },
-  assignOpen(cid) { const c = cls(cid); const l = S.teachers.filter(t => t.g === c.g); S.form = { teacher: l[0] ? l[0].id : '' }; S.modal = { t: 'assign', cid }; },
+  usersTab(tab) { S.p = Object.assign({}, S.p, { users: tab }); },
+  locsTab(tab) { S.p = Object.assign({}, S.p, { locs: tab }); },
+  locOffOpen(code) { S.form = { reason: '', mode: '', target: '', dest: '' }; S.modal = { t: 'locOff', code }; },
+  async locOffSave() {
+    const f = S.form; const code = S.modal.code;
+    await call('locDisable', { id: code, reason: f.reason, mode: f.mode, target: f.target, dest: f.dest }); S.modal = null;
+  },
+  async locEnable(code) { await call('locEnable', { id: code }); },
+  teacherLinkOpen(tid) { S.form = { sid: '' }; S.modal = { t: 'teacherLink', tid }; },
+  async teacherLinkSave() { await call('teacherLink', { tid: S.modal.tid, sid: S.form.sid }); S.modal = null; },
+  assignOpen(cid) { const c = cls(cid); const l = assignable(c.g, c.course); S.form = { teacher: l[0] ? l[0].id : '' }; S.modal = { t: 'assign', cid }; },
   async assignSave(cid) { await call('assignSave', { cid, teacher: S.form.teacher }); S.modal = null; },
-  classNew() { S.form = { course: 'BAS', sem: 1, g: 'F', day: 1, time: '20:00', teacher: '', meet: '' }; S.modal = { t: 'class' }; },
-  async classSave() { await call('classSave', S.form); S.modal = null; },
-  allocOpen(rid) { const r = S.regs.find(x => x.id === rid); const l = S.classes.filter(c => c.loc === ME.loc && c.g === r.g).sort((a, b) => (a.course === r.course ? 0 : 1) - (b.course === r.course ? 0 : 1)); S.form = { cid: l[0] ? l[0].id : '' }; S.modal = { t: 'alloc', rid }; },
+  classNew() { S.form = { course: 'BAS', sem: 1, g: 'F', day: 1, time: '20:00', start: TODAY, teacher: '', meet: '', loc: S.p.loc || '' }; S.modal = { t: 'class' }; },
+  async classSave() { if (!S.form.start) throw new ApiError('Choose the start date.'); if (ME.role === 'super' && !S.form.loc) throw new ApiError('Choose the location.'); await call('classSave', S.form); S.modal = null; },
+  allocOpen(rid) { const r = S.regs.find(x => x.id === rid); const fit = c => (c.loc === r.loc ? 0 : 4) + (c.course === r.course ? 0 : 2) + (!r.sem || c.sem === r.sem ? 0 : 1); const l = S.classes.filter(c => c.g === r.g && !ended(c) && c.id !== r.from).sort((a, b) => fit(a) - fit(b)); S.form = { cid: l[0] ? l[0].id : '' }; S.modal = { t: 'alloc', rid }; },
+  moveOpen(sid) { const l = moveTargets(S.students.find(s => s.id === sid)); S.form = { cid: l[0] ? l[0].id : '' }; S.modal = { t: 'move', sid }; },
+  async moveSave(sid) { await call('moveStudent', { sid, cid: S.form.cid }); S.modal = null; },
+  addStuOpen(cid) { S.modal = { t: 'addStu', cid }; },
+  async regRemove(id, _el, _ev, yes) {
+    if (!yes) return sure('Remove the registration of ' + S.regs.find(r => r.id === id).name + '? This cannot be undone.', 'Remove', 'regRemove', id);
+    await call('regRemove', { id });
+  },
+  regsFromClass() { S.modal = null; S.back = null; go('regs'); },
+  async addReg(arg) { const a = arg.split('|'); await call('allocSave', { rid: a[0], cid: a[1] }); if (S.modal) S.modal.err = ''; },
+  closeOpen(cid) { S.form = { reason: '', all: 'reg', dest: {} }; S.modal = { t: 'close', cid }; },
+  async closeSave(cid, _el, _ev, yes) {
+    const f = S.form; if (!f.reason.trim()) throw new ApiError('Give a reason for closing the class.');
+    const dest = {}; classStudents(cid).forEach(s => { dest[s.id] = f.all === 'each' ? (f.dest[s.id] || 'reg') : f.all; });
+    if (!yes) return sure('Close ' + cid + '? This cannot be undone.', 'Close class', 'closeSave', cid);
+    await call('closeClass', { cid, reason: f.reason, dest }); S.modal = null;
+  },
+  editOpen(arg) { const i = arg.indexOf('|'); const kind = arg.slice(0, i), id = arg.slice(i + 1); const r = EDIT[kind].find(id); if (!r) return; S.form = EDIT[kind].values(r); S.modal = { t: 'edit', kind, id }; },
+  async editSave() {
+    const m = S.modal; const sp = EDIT[m.kind]; const payload = Object.assign({}, sp.out ? sp.out(S.form) : S.form, { id: m.id });
+    const el = sp.file && document.getElementById('ed-file'); const file = el && el.files && el.files[0];
+    if (file) payload.fileId = await upload(file); /* a replacement file is uploaded first */
+    await call(sp.action, payload); S.modal = null;
+  },
+  logEdit(sid) {
+    const x = S.sessions.find(s => s.id === sid); S.back = { view: S.view, p: S.p };
+    S.draft = { sid, edit: true, held: x.held, reason: x.reason || '', verse: x.verse || '', covered: Object.assign({ b: false, l: false, e: false }, x.covered), att: Object.assign({}, x.att), note: x.note || '' }; go('log');
+  },
+  assistOpen(cid) { S.form = { sid: cls(cid).assistantId || '' }; S.modal = { t: 'assist', cid }; },
+  async assistSave(cid) { await call('setAssistant', { cid, sid: S.form.sid }); S.modal = null; },
+  loginOpen(tid) { S.modal = { t: 'login', tid }; },
+  stuLoginOpen(sid) { S.modal = { t: 'stuLogin', sid }; },
+  removeOpen(sid) { S.form = { mode: 'wait', reason: '' }; S.modal = { t: 'remove', sid }; },
+  async removeSave(sid) { await call('removeStudent', { sid, mode: S.form.mode, reason: S.form.reason }); S.modal = null; },
+  promoteOpen(cid) { const c = cls(cid); S.form = { up: {}, start: TODAY }; classStudents(cid).forEach(s => { S.form.up[s.id] = semResult(s.id, c.course, c.sem) === 'pass'; }); S.modal = { t: 'promote', cid }; },
+  async promoteSave(cid, _el, _ev, yes) {
+    const up = Object.keys(S.form.up).filter(k => S.form.up[k]); const n = Object.keys(S.form.up).length - up.length;
+    if (!yes) return sure(up.length + ' student' + (up.length === 1 ? '' : 's') + ' move on' + (n ? ' and ' + n + ' go back to registrations' : '') + '. Continue?', 'Continue', 'promoteSave', cid);
+    await call('promote', { cid, up, start: S.form.start }); S.modal = null;
+    /* a course just completed: offer the next level straight away */
+    const c = cls(cid); if (c.status === 'completed' && S.courses[levelRank(c.course) + 1] && classStudents(cid).length) A.nextOpen(cid);
+  },
+  /* a class that finished its course moves up a level; its teacher stays if they can teach the next one */
+  nextOpen(cid) {
+    const c = cls(cid); const k = S.courses[levelRank(c.course) + 1]; const up = {}; classStudents(cid).forEach(s => { up[s.id] = true; });
+    S.form = { up, start: TODAY, teacher: assignable(c.g, k.code).some(t => t.id === c.teacherId) ? c.teacherId : '' }; S.modal = { t: 'nextLevel', cid };
+  },
+  async nextSave(cid) { await call('classNextLevel', { cid, up: Object.keys(S.form.up).filter(k => S.form.up[k]), start: S.form.start, teacher: S.form.teacher }); S.modal = null; },
   async allocSave(rid) { await call('allocSave', { rid, cid: S.form.cid }); S.modal = null; },
-  async regRemove(id) { const r = S.regs.find(x => x.id === id); if (confirm('Remove the registration for ' + (r ? r.name : 'this student') + '?')) await call('regRemove', { id }); },
-  classEditOpen(cid) { const c = cls(cid); const h = Math.floor(c.time / 60), mi = c.time % 60; S.form = { cid, course: c.course, sem: c.sem, g: c.g, day: c.day, time: String(h).padStart(2, '0') + ':' + String(mi).padStart(2, '0'), teacher: c.teacherId || '', assistant: c.assistantId || '', meet: c.meet || '' }; S.modal = { t: 'class', cid }; },
-  async classEditSave(cid) { const f = Object.assign({}, S.form); if (ME.role !== 'locadmin') delete f.teacher; await call('classEdit', f); S.modal = null; },
-  moveOpen(sid) { const s = S.students.find(x => x.id === sid); const l = S.classes.filter(c => c.loc === ME.loc && c.g === s.g && c.id !== s.classId); S.form = { cid: l[0] ? l[0].id : '' }; S.modal = { t: 'move', sid }; },
-  async moveSave(sid) { await call('studentMove', { sid, cid: S.form.cid }); S.modal = null; },
-  callOpen() { S.form = { status: 'Held', text: '', owner: ME.name, due: addDays(TODAY, 7) }; S.modal = { t: 'call' }; },
+  /* log a meeting (the latest scheduled one that has taken place, by default), or edit a logged one */
+  callOpen(id) {
+    const l = myLoc(); const was = id ? S.calls.find(c => c.id === id) : null; const att = {};
+    (was && was.att || []).forEach(x => { att[x.sid] = x.present; });
+    callPeople(l).forEach(p => { if (!(p.sid in att)) att[p.sid] = true; });
+    let date = l.nextCall <= TODAY ? l.nextCall : TODAY;
+    if (l.nextCall > TODAY) while (DOWL[pd(date).getDay()] !== l.callDay) date = addDays(date, -1);
+    S.form = { id: was ? was.id : '', date: was ? was.date : date, status: was ? was.status : 'Held', att, text: '', owner: ME.name, due: addDays(TODAY, 7), loc: l.code }; S.modal = { t: 'call', edit: !!was };
+  },
+  async taskDone(id, _el, _ev, yes) {
+    if (!yes) return sure('Mark this task as done? It leaves your list and the action items.', 'Mark done', 'taskDone', id);
+    await call('closeAction', { id });
+  },
+  schedOpen(code) {
+    const l = S.locations.find(x => x.code === code); const m = callMinutes(l.callTime);
+    S.form = { callDay: l.callDay, time: m == null ? '' : String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'), meet: l.meet || '' }; S.modal = { t: 'callSched', code };
+  },
+  async schedSave() { await call('callSchedule', { loc: S.modal.code, callDay: S.form.callDay, time: S.form.time, meet: S.form.meet }); S.modal = null; },
+  taskOpen(id) { S.form = { transcript: '' }; S.modal = { t: 'tasks', step: 'paste', callId: id }; },
+  async taskAnalyse() {
+    const m = S.modal; if (!(S.form.transcript || '').trim()) throw new ApiError('Paste the transcript of the call first.');
+    m.busy = true; m.err = ''; render();
+    try {
+      const r = await api('POST', '/api/transcript', { callId: m.callId, transcript: S.form.transcript });
+      S.form = { tasks: r.tasks.map(t => Object.assign({}, t, { include: true, due: t.due || addDays(TODAY, 7) })) };
+      S.modal = { t: 'tasks', step: 'review', callId: m.callId, dropped: r.dropped };
+    } catch (e) { m.busy = false; throw e; }
+  },
+  async taskSave() {
+    const items = S.form.tasks.filter(t => t.include); if (!items.length) throw new ApiError('Tick at least one task to save.');
+    await call('actionsFromMeeting', { callId: S.modal.callId, items }); S.modal = null;
+  },
+  async callRemove(id, _el, _ev, yes) {
+    if (!yes) return sure('Remove the meeting of ' + S.calls.find(c => c.id === id).date + '? Its attendance is removed with it; action items stay.', 'Remove', 'callRemove', id);
+    await call('callRemove', { id });
+  },
+  async partAdd(code) { if (!S.form.part) throw new ApiError('Choose a student.'); await call('participantAdd', { loc: code, sid: S.form.part }); S.form.part = ''; },
+  async partRemove(arg, _el, _ev, yes) {
+    const [code, sid] = arg.split('|');
+    if (!yes) return sure('Remove this participant from the weekly call?', 'Remove', 'partRemove', arg);
+    await call('participantRemove', { loc: code, sid });
+  },
   async callSave() { await call('callSave', S.form); S.modal = null; },
   reminder(sid) { S.modal = { t: 'reminder', sid }; },
   cert(key) { S.modal = { t: 'cert', key }; },
@@ -181,16 +371,31 @@ const A = {
   logOpen(sid) { const x = S.sessions.find(s => s.id === sid); const c = cls(x.classId); S.back = { view: S.view, p: S.p }; S.draft = { sid, held: true, reason: '', verse: verseRef(versesBefore(c, x.week) + 3), covered: { b: true, l: true, e: true }, att: {}, note: '' }; go('log'); },
   logHeld(v) { S.draft.held = v === '1'; },
   logAtt(arg) { const a = arg.split('|'); S.draft.att[a[0]] = a[1]; },
+  logAllIn(ids) { ids.split(',').forEach(id => { S.draft.att[id] = 'p'; }); },
   async logSave() { await call('logSave', S.draft); S.draft = null; A.back(); },
-  async examStart(id) {
-    if (!confirm('You have one attempt. Start the exam now?')) return;
+  async examStart(id, _el, _ev, yes) {
+    /* a re-exam (after a mark below 50%) is said so; the best attempt counts */
+    const p = id.split('-'); const ch = p[0] === 'CH'; const [co, sem, sub, n] = ch ? p.slice(1) : p;
+    const again = S.results.some(r => r.sid === ME.studentId && r.course === co && r.sem === +sem && r.sub === sub && (r.chapter || null) === (ch ? +n : null));
+    if (!yes) return sure(again ? 'Sit this ' + (ch ? 'chapter paper' : 'exam') + ' again? Your best mark counts.' : 'Start the ' + (ch ? 'chapter paper' : 'exam') + ' now? Answer every question, then submit. If you score below 50%, you can sit it again while it is open.', 'Start now', 'examStart', id);
     const r = await call('examStart', { id });
     S.exam = { attemptId: r.attemptId, examId: r.examId, qs: r.qs, i: 0, ans: r.qs.map(q => q.type === 'match' ? q.left.map(() => '') : undefined) };
     go('exam');
   },
   examPick(j) { S.exam.ans[S.exam.i] = +j; },
   examGo(n) { S.exam.i = Math.max(0, Math.min(S.exam.qs.length - 1, S.exam.i + +n)); window.scrollTo(0, 0); },
-  async examSubmit() { await call('examSubmit', { attemptId: S.exam.attemptId, ans: S.exam.ans }); S.exam = null; go('exams'); S.modal = { t: 'done' }; },
+  async examSubmit() {
+    if (S.exam.label) { await call('tquizSubmit', { attemptId: S.exam.attemptId, ans: S.exam.ans }); S.exam = null; go('teacher:training'); return; }
+    const r = await call('examSubmit', { attemptId: S.exam.attemptId, ans: S.exam.ans }); S.exam = null; go('exams');
+    S.modal = r && r.key ? { t: 'chDone', pct: r.pct, passed: r.passed, key: r.key } : { t: 'done' }; /* a chapter paper shows its mark at once */
+  },
+  /* the teacher readiness quiz for a syllabus (see server/readiness.js) */
+  async tquizStart(mid, _el, _ev, yes) {
+    if (!yes) return sure('Start the readiness quiz now? Answer every question, then submit. If you do not pass, you can take it again from tomorrow.', 'Start now', 'tquizStart', mid);
+    const r = await call('tquizStart', { mid });
+    S.exam = { attemptId: r.attemptId, examId: r.examId, label: r.label, qs: r.qs, i: 0, ans: r.qs.map(q => q.type === 'match' ? q.left.map(() => '') : undefined) };
+    go('exam');
+  },
   overlay(_, el, ev) { if (ev.target === el) S.modal = null; }
 };
 
@@ -207,7 +412,7 @@ const F = {
     S.login = { username: d.username, err: '' };
     try { await api('POST', '/api/login', { username: d.username, password: d.password }); }
     catch (e) { S.login.err = e.message; return; }
-    resetUi(); await loadData(); go(TABS[ME.role][0][0]);
+    resetUi(); await loadData(); goFirst();
   },
   async qAdd(d) { const f = S.form.qb; await call('qAdd', Object.assign({}, d, { course: f.course, sem: f.sem, sub: f.sub, type: f.type, edit: f.edit })); f.edit = null; },
   async rdSave(d) { await call('rdSave', Object.assign({}, d, { week: S.form.rd.week })); },
@@ -219,9 +424,14 @@ const F = {
   async trainAdd(d) { d.req = !!d.req; await call('trainAdd', d); },
   async changePassword(d) { await call('changePassword', d); S.modal = null; },
   async userReset(d) { await call('userReset', d); S.modal = null; },
-  async userAdd(d) { await call('userAdd', d); S.form.ua = { role: 'teacher' }; }
+  async studentLogin(d) { await call('studentLogin', d); S.modal = null; },
+  async teacherLogin(d) { await call('userAdd', Object.assign({}, d, { role: 'teacher' })); S.modal = null; },
+  async userAdd(d) {
+    const roles = Object.keys(d).filter(k => k.startsWith('r_')).map(k => k.slice(2));
+    await call('userAdd', { studentId: d.studentId, username: d.username, password: d.password, loc: d.loc, roles }); S.form.ua = { q: '' };
+  }
 };
-const SERVER_FORMS = ['locAdd', 'courseAdd', 'subjectAdd', 'teacherAdd', 'tradAdd', 'actionAdd', 'examAdd', 'setTargets', 'regAdd'];
+const SERVER_FORMS = ['locAdd', 'courseAdd', 'subjectAdd', 'regAdd', 'tradAdd', 'actionAdd', 'setTargets'];
 
 function showError(e) {
   const msg = e && e.message ? e.message : 'Something went wrong.';
@@ -231,6 +441,11 @@ function showError(e) {
   } else toast(msg);
   if (!(e instanceof ApiError)) console.error(e);
 }
+
+/* Asks for confirmation in the app's own dialog: browsers inside apps often block confirm() and answer "no"
+   without showing anything. Confirming runs the action again with yes = true; Cancel brings back any dialog
+   that was open. */
+function sure(text, okLabel, act, arg) { S.modal = { t: 'confirm', text, okLabel, act, arg, back: S.modal }; }
 
 async function runGuarded(fn, rerenderOnError) {
   if (busy) return; busy = true; document.body.style.cursor = 'progress';
@@ -256,13 +471,16 @@ function onInput(ev) {
   if (el.dataset && el.dataset.call === 'setAccess') { if (ev.type === 'change') runGuarded(() => call('setAccess', { tid: el.dataset.tid, access: el.value })); return; }
   if (!el.dataset || !el.dataset.bind) return;
   setPath(el.dataset.bind, el.type === 'checkbox' ? el.checked : el.value);
+  if (el.dataset.bind.indexOf('p.') === 0) Object.keys(S.p).filter(k => k.indexOf('pg_') === 0).forEach(k => { delete S.p[k]; });
   if (el.dataset.bind.indexOf('exam.') === 0 && S.exam) {
-    const n = examCount(); const c = document.getElementById('ex-count'); if (c) c.textContent = 'One attempt. ' + n + ' of ' + S.exam.qs.length + ' answered.';
+    const n = examCount(); const c = document.getElementById('ex-count'); if (c) c.textContent = n + ' of ' + S.exam.qs.length + ' answered.';
     const b = document.getElementById('ex-submit'); if (b) b.disabled = n < S.exam.qs.length;
   }
   if (el.dataset.rerender && ev.type === 'change') render();
 }
 document.addEventListener('input', onInput);
+/* no right-click menu (Save as, Copy) on the reading page */
+document.addEventListener('contextmenu', ev => { if (ev.target.closest && ev.target.closest('[data-noctx]')) ev.preventDefault(); });
 document.addEventListener('change', onInput);
 document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && S.modal) { S.modal = null; render(); } });
 window.addEventListener('beforeunload', ev => { if (S.exam || S.draft) { ev.preventDefault(); ev.returnValue = ''; } });
@@ -277,7 +495,7 @@ function startupError(msg) {
   window.__amStarted = true;
   try { META = await api('GET', '/api/meta'); }
   catch (e) { startupError(e.message); return; }
-  if (META.signedIn) { try { await loadData(); go(TABS[ME.role][0][0]); } catch { clearSession(); } }
+  if (META.signedIn) { try { await loadData(); goFirst(); } catch { clearSession(); } }
   render();
 })();
 

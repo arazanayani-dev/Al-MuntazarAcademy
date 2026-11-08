@@ -9,10 +9,11 @@ It is built from the clickable prototype, kept in [`docs/prototype.html`](docs/p
 | Role | What they do |
 | --- | --- |
 | **Super admin** | Sees every location side by side. Adds locations, course types, subjects, teachers and user accounts. Runs reports, including a custom report builder with CSV download. |
-| **Academic team** | Maintains the syllabus chart, the question bank (six question types, plus importing a question paper), exam windows, the materials library, weekly reading targets, teacher access levels, teacher training and the traditions library. |
-| **Location responsible** (primary or secondary) | Runs one location: registers new students and allocates each registration to a class (the only way a student joins one), creates and edits classes, assigns teachers, moves students between classes, chases unlogged sessions, reviews and publishes results, records the weekly coordination call and tracks action items. |
-| **Coordinator** | Registers new students (the location manager then allocates them to a class), creates and edits classes (the manager assigns teachers), and follows their own action items. |
-| **Teacher** | Sees the next class and this week's lesson, logs sessions and attendance, sees students who need attention, shares materials with a class, and replies to training invitations. |
+| **Academic content creator** | Adds and edits academic content: the question bank (six question types, plus importing a question paper), the materials library, teacher training and the traditions library; marks syllabus charts as loaded. Every addition or change waits for the approver. |
+| **Academic content approver** | Approves each item the creator submits, or sends it back with a note. Nothing reaches teachers or students until it is approved. Also sets weekly reading targets and teacher access levels. |
+| **Location responsible** (primary or secondary) | Runs one location: creates classes and assigns teachers, opens each class's exam window, chases unlogged sessions, reviews and publishes results, records the weekly coordination call and tracks action items. |
+| **Coordinator** | Allocates new registrations to classes, creates classes (which wait for a teacher to be assigned), and follows their own action items. |
+| **Teacher** | Sees the next class and this week's lesson, logs sessions and attendance, opens their class's exam window, sees students who need attention, shares materials with a class, and replies to training invitations. |
 | **Student** | Sees the next class in their own time zone, logs weekly reading, takes exams, sees published results and certificates, and opens shared materials. A student who is their class's **class assistant** can also log sessions. |
 
 ## Running it
@@ -35,14 +36,15 @@ All sample accounts use the password **`almuntazar123`** (set `SEED_PASSWORD` to
 | Username | Person | Role |
 | --- | --- | --- |
 | `abbas` | Br. Abbas | Super admin |
-| `tahera` | Sr. Tahera | Academic team |
+| `rubab` | Sr. Rubab | Academic content creator |
+| `tahera` | Sr. Tahera | Academic content approver |
 | `jafar` | Br. Jafar | Primary responsible, Mumbai |
 | `kazim` | Br. Kazim | Secondary responsible, Mumbai |
 | `sabiha` | Sr. Sabiha | Coordinator, Mumbai |
 | `maryam` | Sr. Maryam | Teacher |
 | `zainab` | Zainab H. | Student and class assistant |
 
-**Before going live:** reset every sample password under *User accounts*, or start with an empty database (`SEED=0`) and create the real accounts. To hide the sample-account list on the sign-in page, set `DEMO=0`.
+**Before going live:** reset every sample password under *User accounts*, or start with an empty database (`SEED=0`) and create the real accounts.
 
 ### Commands
 
@@ -61,10 +63,10 @@ All sample accounts use the password **`almuntazar123`** (set `SEED_PASSWORD` to
 | `DATABASE_URL` or `POSTGRES_URL` | (none) | A Postgres connection string. When set, records are kept in Postgres instead of the local file. Vercel sets this when you connect Neon. |
 | `DATA_DIR` | `./data` | Where the local database (`academy.db`) and uploaded files are kept when no Postgres is set. Back this folder up. |
 | `BLOB_READ_WRITE_TOKEN` | (none) | When set, uploaded files go to Vercel Blob. Vercel sets this when you connect Blob storage. |
+| `ANTHROPIC_API_KEY` | (none) | Lets Claude draft exam questions from syllabi and suggest tasks from meeting transcripts. Without it, those features say they are not set up. On your computer it can go in a `.env` file. |
 | `SEED` | on | Set to `0` to start with an empty database instead of the sample data. |
 | `SEED_PASSWORD` | `almuntazar123` on your computer; **required** on Vercel | Password for the sample accounts. If you change it, sample accounts whose password nobody has changed follow the new value on the next start. |
 | `ADMIN_PASSWORD`, `ADMIN_USERNAME` | (none), `admin` | When set, a super admin account with this username always exists and opens with this password, even if it was changed in the app. Use it to start empty (with `SEED=0`) or to get back in. Remove it once you have your own admin account. |
-| `DEMO` | on | Set to `0` to hide the sample-data notice shown when running on your own computer. |
 | `APP_TZ` | `Asia/Kolkata` | Time zone used to decide today's date. Class times are entered in India time. |
 | `APP_TODAY` | (real date) | Pins today's date, for demonstrations. |
 | `TRUST_PROXY` | off | Set to `1` when running behind a reverse proxy that terminates HTTPS. It is always on for Vercel. |
@@ -86,7 +88,8 @@ On the first visit, the app creates its table in Postgres and loads the sample d
 Notes:
 - Until Neon is connected, the app still runs, but shows a red notice that changes can be lost.
 - Files uploaded on Vercel can be up to 4 MB. For larger books, upload them to Google Drive and paste the link.
-- Uploaded files are stored at long, unguessable Blob addresses. The app only gives the address to people allowed to see the material.
+- Uploaded files are stored at long, unguessable Blob addresses. The app passes a file through to the reading page only for people allowed to see the material, and never shows the address.
+- Add `ANTHROPIC_API_KEY` under Environment Variables for question drafting and transcript tasks. Drafting runs after the syllabus is saved, for up to 5 minutes (`maxDuration` in `vercel.json`); a long syllabus may need **Draft more** to finish its chapters.
 
 ### Docker
 

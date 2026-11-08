@@ -8,14 +8,17 @@
     "node": ">=22.13"
   },
   "scripts": {
-    "start": "node --no-warnings=ExperimentalWarning server/index.js",
-    "dev": "node --no-warnings=ExperimentalWarning --watch server/index.js",
+    "start": "node --no-warnings=ExperimentalWarning --env-file-if-exists=.env server/index.js",
+    "dev": "node --no-warnings=ExperimentalWarning --watch --env-file-if-exists=.env server/index.js",
     "seed": "node --no-warnings=ExperimentalWarning server/seed-cli.js",
     "test": "node --no-warnings=ExperimentalWarning --test \"test/**/*.test.js\""
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.3.0",
     "@vercel/blob": "^2.8.2",
+    "@vercel/functions": "^2.2.13",
     "express": "^4.21.2",
+    "pdfjs-dist": "^4.10.38",
     "pg": "^8.23.1"
   }
 }

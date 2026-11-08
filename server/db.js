@@ -11,7 +11,7 @@ import path from 'node:path';
 export const COLLECTIONS = [
   'users', 'authSessions', 'locations', 'courses', 'subjects', 'teachers', 'classes', 'students',
   'sessions', 'results', 'exams', 'questions', 'traditions', 'calls', 'actions', 'regs',
-  'materials', 'shares', 'trainings', 'reading', 'attempts', 'files', 'outbox'
+  'materials', 'shares', 'trainings', 'reading', 'attempts', 'files', 'outbox', 'promotions', 'readiness'
 ];
 /* Written but never read by the app, so not loaded on every request */
 const WRITE_ONLY = new Set(['outbox']);
@@ -51,22 +51,26 @@ export class Store {
   get(key, def) { return key in this.kv ? this.kv[key] : def; }
   set(key, val) { this.kv[key] = val; this.ops.set('kv\u0000' + key, { op: 'put', coll: 'kv', id: key, doc: val }); }
 
-  /* Runs fn (synchronous) and saves what it changed. On any error nothing is saved and memory is reloaded. */
+  /* Runs fn (synchronous) and saves what it changed. On any error nothing is saved and memory is reloaded.
+     The changes are collected before the first await, so a tx started while this one is still writing is a
+     transaction of its own, not part of this one. */
   async tx(fn) {
     if (this.depth) return fn();
+    let r, ops;
     this.depth++;
     try {
-      const r = fn();
-      const ops = [...this.ops.values()]; this.ops = new Map();
-      if (ops.length) await this.write(ops);
-      return r;
+      r = fn();
+      ops = [...this.ops.values()];
     } catch (e) {
-      this.ops = new Map();
+      this.ops = new Map(); this.depth--;
       await this.reload();
       throw e;
-    } finally {
-      this.depth--;
     }
+    this.ops = new Map(); this.depth--;
+    if (ops.length) {
+      try { await this.write(ops); } catch (e) { await this.reload(); throw e; }
+    }
+    return r;
   }
 }
 

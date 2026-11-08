@@ -9,14 +9,17 @@ const BELIEF = ['Tauheed', 'Adl', 'Nabuwwat', 'Imamat', 'Maad'];
 
 function rng(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 
+/* Every login belongs to a person record (a student record). role is only the label on the sign-in page;
+   roles are what the account holds (teacher comes from a teaching level, student from the person). */
 export const DEMO_USERS = [
-  { username: 'abbas', name: 'Br. Abbas', role: 'super' },
-  { username: 'tahera', name: 'Sr. Tahera', role: 'academic' },
-  { username: 'jafar', name: 'Br. Jafar', role: 'locadmin', loc: 'MUM' },
-  { username: 'kazim', name: 'Br. Kazim', role: 'locadmin', loc: 'MUM' },
-  { username: 'sabiha', name: 'Sr. Sabiha', role: 'coord', loc: 'MUM' },
-  { username: 'maryam', name: 'Sr. Maryam', role: 'teacher', teacherId: 't1' },
-  { username: 'zainab', name: 'Zainab H.', role: 'student', studentId: 'zainab' }
+  { username: 'abbas', name: 'Br. Abbas', role: 'super', roles: ['super'], studentId: 'p-abbas' },
+  { username: 'rubab', name: 'Sr. Rubab', role: 'acmaker', roles: ['acmaker'], studentId: 'p-rubab' },
+  { username: 'tahera', name: 'Sr. Tahera', role: 'academic', roles: ['academic', 'trainer'], studentId: 'p-tahera' },
+  { username: 'jafar', name: 'Br. Jafar', role: 'locadmin', roles: ['locadmin'], loc: 'MUM', studentId: 'p-jafar' },
+  { username: 'kazim', name: 'Br. Kazim', role: 'locadmin', roles: ['locadmin'], loc: 'MUM', studentId: 'p-kazim' },
+  { username: 'sabiha', name: 'Sr. Sabiha', role: 'coord', roles: ['coord'], loc: 'MUM', studentId: 'p-sabiha' },
+  { username: 'maryam', name: 'Sr. Maryam', role: 'teacher', roles: [], studentId: 'p-t1' },
+  { username: 'zainab', name: 'Zainab H.', role: 'student', roles: [], studentId: 'zainab' }
 ];
 
 export async function seed(store, today, password) {
@@ -48,7 +51,11 @@ export async function seed(store, today, password) {
       { id: 't7', name: 'Br. Mohsin D.', g: 'M' }, { id: 't8', name: 'Sr. Rabab S.', g: 'F' }],
     classes: [], students: [], sessions: [], results: [], questions: []
   };
-  S.teachers.forEach(t => { t.access = 'own'; t.loc = 'MUM'; t.tzName = 'India'; t.tzOff = 5.5; });
+  const LEVEL = { t1: 'BAS', t2: 'INR', t3: 'BAS', t4: 'INT', t5: 'ADV', t6: 'INT', t7: 'BAS', t8: 'ADV' };
+  S.teachers.forEach(t => { t.access = 'own'; t.loc = 'MUM'; t.level = LEVEL[t.id]; t.tzName = 'India'; t.tzOff = 5.5; t.sid = 'p-' + t.id; });
+  /* everyone is a person (student record) first: the sample teachers and staff have one, not in a class now */
+  const people = S.teachers.map(t => ({ id: t.sid, name: t.name, g: t.g }))
+    .concat(DEMO_USERS.filter(u => u.studentId.startsWith('p-') && !S.teachers.some(t => t.sid === u.studentId)).map(u => ({ id: u.studentId, name: u.name, g: u.name.startsWith('Sr.') ? 'F' : 'M' })));
 
   const SIS = ['Batool', 'Kulsum', 'Ruqayya', 'Masooma', 'Narjis', 'Zehra', 'Sukaina', 'Tahera', 'Rabab', 'Hawra', 'Amina', 'Naseem', 'Shabnam', 'Farwa', 'Kaneez', 'Nargis', 'Zahra', 'Mehjabeen', 'Sughra', 'Asiya', 'Hajra', 'Khadija', 'Sayyeda', 'Tasneem', 'Insiya', 'Arwa', 'Alia', 'Samina', 'Rubab', 'Nazneen', 'Shahida', 'Fizza', 'Bushra', 'Kausar', 'Maryam', 'Sakina', 'Fatima'];
   const BRO = ['Ali', 'Hasan', 'Husain', 'Abbas', 'Mehdi', 'Sajjad', 'Baqir', 'Sadiq', 'Taqi', 'Naqi', 'Askari', 'Murtaza', 'Haider', 'Qasim', 'Akbar', 'Asghar', 'Mohsin', 'Imran', 'Yusuf', 'Salman', 'Meesam', 'Zeeshan', 'Kumail', 'Ammar', 'Mikail', 'Yasir', 'Zaki', 'Riyaz', 'Shabbir', 'Mustafa', 'Jawad', 'Hadi', 'Sibtain'];
@@ -72,7 +79,7 @@ export async function seed(store, today, password) {
     const cancelledDates = (o.cancelled || []).map(D), unloggedDates = (o.unlogged || []).map(D);
     for (let i = count - 1; i >= 0; i--) {
       const dt = addDays(last, -7 * i); const cancelled = cancelledDates.includes(dt); const unlogged = unloggedDates.includes(dt);
-      const x = { id: 'x' + (++nX), classId: cid, date: dt, held: !cancelled, logged: cancelled || !unlogged, week: cancelled ? null : wk, att: {}, reason: cancelled ? 'Teacher travelling' : '', loggedBy: '' };
+      const x = { id: 'x' + (++nX), classId: cid, sem: cls.sem, date: dt, held: !cancelled, logged: cancelled || !unlogged, week: cancelled ? null : wk, att: {}, reason: cancelled ? 'Teacher travelling' : '', loggedBy: '' };
       if (!cancelled) {
         if (x.logged) { S.students.filter(s => s.classId === cid && s.joined <= dt).forEach(s => { x.att[s.id] = rnd() < pAttend[s.id] ? 'p' : 'a'; }); x.loggedBy = teacherName(cls.teacherId); }
         wk++;
@@ -135,7 +142,7 @@ export async function seed(store, today, password) {
   addQ('BAS', 2, 'b', 'Select the translation of this ayat (Al-Fatiha 1:2).', ['In the name of Allah, the Beneficent, the Merciful', 'All praise belongs to Allah, Lord of the worlds', 'Master of the Day of Judgement', 'Guide us on the straight path'], 1, { type: 'ayah', ar: 'الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ' });
   [['l', 'Islamic Laws'], ['e', 'Ethics']].forEach(p => { for (let i = 1; i <= 3; i++) addQ('BAS', 2, p[0], '[' + p[1] + ' sample question ' + i + ': the academic team writes the real question]', ['[Option A, marked correct]', '[Option B]', '[Option C]', '[Option D]'], 0); });
 
-  const exams = ['b', 'l', 'e'].map(sub => ({ id: 'BAS-2-' + sub, course: 'BAS', sem: 2, sub, open: false, from: D('2026-11-02'), to: D('2026-11-08') }));
+  const exams = ['b', 'l', 'e'].map(sub => ({ id: 'BAS-2-' + sub, course: 'BAS', sem: 2, sub }));
   const traditions = [
     { id: 'h1', text: '[Tradition on the significance of acquiring knowledge: text to be supplied by the academic team]', source: '[Source]' },
     { id: 'h2', text: '[Second tradition: text to be supplied by the academic team]', source: '[Source]' }];
@@ -160,7 +167,11 @@ export async function seed(store, today, password) {
     { id: 'm9', title: 'Basic Semester 4 syllabus: Belief (Imamat)', type: 'Syllabus', course: 'BAS', sem: 4, sub: 'b', week: null, share: true, src: 'Basic-Sem4-Belief-syllabus.pdf', date: '2026-08-01' },
     { id: 'm10', title: 'Basic Semester 2 reading book: Adl', type: 'Book', course: 'BAS', sem: 2, sub: 'b', week: null, pages: 420, share: true, src: 'Basic-Sem2-reading-book.pdf', date: '2026-09-05' },
     { id: 'm11', title: 'General reading book: Ethics in daily life', type: 'Book', course: 'ALL', sem: 0, sub: 'all', week: null, pages: 180, share: true, src: 'Ethics-daily-life.pdf', date: '2026-08-20' }];
-  materials.forEach(m => { m.date = D(m.date); });
+  /* waiting for the approver, submitted by the sample content creator */
+  const sub = { status: 'pending', submittedBy: 'Sr. Rubab', submittedById: 'u-rubab', submittedOn: '2026-10-10', reviewNote: '' };
+  materials.push({ id: 'm12', title: 'Slides for week 7: Belief', type: 'Slides', course: 'BAS', sem: 2, sub: 'b', week: 7, share: true, src: 'https://drive.google.com/', date: '2026-10-10', ...sub });
+  S.questions.push({ id: 'q' + (++nQ), course: 'BAS', sem: 2, sub: 'b', type: 'single', text: 'Divine justice means that God:', options: ['Never wrongs anyone', 'Has a son', 'Can be seen', 'Is many'], correct: 0, retired: false, ...sub, submittedOn: D(sub.submittedOn) });
+  materials.forEach(m => { m.date = D(m.date); if (m.submittedOn) m.submittedOn = D(m.submittedOn); });
   const shares = [{ id: 'sh1', mid: 'm10', cid: 'MUM-BAS-003', date: D('2026-09-14'), by: 'Sr. Maryam' }, { id: 'sh2', mid: 'm1', cid: 'MUM-BAS-003', date: D('2026-09-10'), by: 'Sr. Maryam' }, { id: 'sh3', mid: 'm6', cid: 'BAH-BAS-001', date: D('2026-09-19'), by: 'Sr. Maryam' }];
   const trainings = [
     { id: 'tr1', title: 'Refresher: Adl before Semester 2 week 6', kind: 'Refresher', course: 'BAS', sem: 2, date: D('2026-10-17'), time: 11 * 60, mode: 'Online on Google Meet', facilitator: 'Sr. Tahera', req: true, rsvp: {}, attended: null },
@@ -198,7 +209,7 @@ export async function seed(store, today, password) {
     put('locations', S.locations.map(l => ({ id: l.code, meet: '', nextCall: l.nextCall || nextWeekday(T0, l.callDay), ...l })));
     put('teachers', S.teachers);
     put('classes', S.classes.map(c => ({ meet: '', ...c })));
-    put('students', S.students);
+    put('students', S.students.concat(people.map(p => ({ ...p, classId: null, joined: D('2025-06-02'), city: 'Mumbai', tzName: 'India', tzOff: 5.5, prefs: { email: true, wa: true, absence: true } }))));
     put('sessions', S.sessions);
     put('results', S.results);
     put('questions', S.questions);
@@ -214,7 +225,7 @@ export async function seed(store, today, password) {
     store.set('published', { 'MUM-BAS-003|1': true });
     store.set('charts', { 'INR-1': true, 'BAS-1': true, 'BAS-2': true });
     store.set('targets', { ayat: 350, pages: 70 });
-    DEMO_USERS.forEach(u => store.put('users', { id: 'u-' + u.username, ...u, password: hashPassword(password), demo: true }));
+    DEMO_USERS.forEach(({ role, ...u }) => store.put('users', { id: 'u-' + u.username, ...u, password: hashPassword(password), demo: true }));
   });
 }
 
