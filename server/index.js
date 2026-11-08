@@ -123,15 +123,21 @@ export async function createApp(opts = {}) {
     tries.set(key, t); return t.length >= 10;
   };
 
+  /* OPEN_ACCESS=1 switches sign-in off: anyone who opens the site is treated as the first super admin.
+     Only for trying out a site that holds sample data. Remove the setting to bring sign-in back. */
+  const open = process.env.OPEN_ACCESS === '1';
+  const isSuperUser = u => !u.disabled && (u.roles || [u.role]).includes('super');
+  const userOf = async (store, req) => (await currentUser(store, req)) || (open ? store.all('users').find(isSuperUser) || null : null);
+
   const auth = h(async (req, res, next) => {
-    const u = await currentUser(req.store, req);
+    const u = await userOf(req.store, req);
     if (!u) return res.status(401).json({ error: 'Please sign in.' });
     req.user = u; next();
   });
 
   /* The sign-in page never lists accounts */
   app.get('/api/meta', h(async (req, res) => {
-    res.json({ today: today(), signedIn: !!(await currentUser(req.store, req)), temporary, setupMessage, maxUpload });
+    res.json({ today: today(), signedIn: !!(await userOf(req.store, req)), open, temporary, setupMessage, maxUpload });
   }));
 
   app.post('/api/login', h(async (req, res) => {
