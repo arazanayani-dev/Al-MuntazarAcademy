@@ -415,8 +415,6 @@ h2{font-weight:700;letter-spacing:.005em}
 .cc-signame{font-family:'Montserrat',sans-serif;font-weight:600;font-size:1.35cqw;color:#134845}
 .cc-sigrole{font-family:'Lora',serif;font-style:italic;font-size:1.2cqw;color:#5E6B67}
 .cc-seal{width:11.5cqw;height:11.5cqw;filter:drop-shadow(0 .25cqw .35cqw rgba(0,0,0,.22))}
-.cc-meta{font-family:'Montserrat',sans-serif;font-size:1.05cqw;letter-spacing:.08em;color:#6B6658;margin-top:1.2cqw;text-transform:uppercase}
-.cc-meta span{color:#C99E66;margin:0 1cqw}
 /* print or save as PDF: only the certificate, filling a landscape A4 page */
 @media print{
   @page{size:A4 landscape;margin:0}

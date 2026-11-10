@@ -1,9 +1,7 @@
 /* The certificate a student receives: landscape A4, drawn in the Almuntazar brand.
    Every size is a share of the certificate's width, so it looks the same on a phone, a laptop and on paper. */
-import { S } from '../state.js';
 import { pd } from '/shared/dates.js';
 import { esc } from '../ui.js';
-import { cls } from '../logic.js';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const longDate = iso => { const t = pd(iso); return t.getDate() + ' ' + MONTHS[t.getMonth()] + ' ' + t.getFullYear(); };
@@ -28,9 +26,7 @@ function seal() {
 }
 
 export function certificateHtml(s, x, issued) {
-  const c = cls(s.classId); const loc = c && (S.locations.find(l => l.code === c.loc) || null);
   const done = /\|done$/.test(x.key);
-  const signer = loc && (loc.primary || loc.secondary);
   return '<div class="cc-wrap"><article class="cc" aria-label="Certificate for ' + esc(s.name) + '">' +
     '<div class="cc-frame"></div>' + corner('tl') + corner('tr') + corner('bl') + corner('br') +
     '<img class="cc-water" src="/img/mark.svg" alt="" aria-hidden="true">' +
@@ -42,12 +38,12 @@ export function certificateHtml(s, x, issued) {
       '<div class="cc-intro">This is to certify that</div>' +
       '<div class="cc-name">' + esc(s.name) + '</div>' +
       '<svg class="cc-flourish" viewBox="0 0 400 20" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round"><path d="M10 10h150M240 10h150" stroke-width="1.2"/><path d="M160 10c12-9 28-9 40 0s28 9 40 0" stroke-width="1.4"/></g><g fill="currentColor"><rect x="196" y="6" width="8" height="8" transform="rotate(45 200 10)"/><circle cx="10" cy="10" r="2"/><circle cx="390" cy="10" r="2"/></g></svg>' +
-      '<div class="cc-line">' + esc(x.line) + (loc ? ' at Almuntazar Canada, ' + esc(loc.name) : '') + '.</div>' +
+      '<div class="cc-line">' + esc(x.line) + ' at Almuntazar Canada.</div>' +
       '<div class="cc-foot">' +
-        '<div class="cc-sig"><div class="cc-sigline"></div><div class="cc-signame">' + esc(signer || 'Location responsible') + '</div><div class="cc-sigrole">' + (loc ? 'Responsible, ' + esc(loc.name) : 'Location responsible') + '</div></div>' +
+        /* left: when it was issued and its number, set like a signature block so the row stays balanced */
+        '<div class="cc-sig"><div class="cc-sigline"></div><div class="cc-signame">' + esc(longDate(issued)) + '</div><div class="cc-sigrole">Date of issue · No. ' + esc(x.no) + '</div></div>' +
         seal() +
         '<div class="cc-sig"><div class="cc-sigline"></div><div class="cc-signame">Dean</div><div class="cc-sigrole">Almuntazar Canada</div></div>' +
       '</div>' +
-      '<div class="cc-meta">Issued ' + esc(longDate(issued)) + '<span>◆</span>Certificate No. ' + esc(x.no) + '</div>' +
     '</div></article></div>';
 }
