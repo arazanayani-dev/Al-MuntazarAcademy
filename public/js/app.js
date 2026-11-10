@@ -103,7 +103,7 @@ function navHtml() {
 
 function loginHtml() {
   const f = S.login || (S.login = { username: '', err: '' });
-  return '<main class="login">' + themeBtn('theme-btn on-login') + '<section class="card"><div class="brandbig">Almuntazar Academy</div><h1 style="text-align:center;font-size:20px">Sign in</h1>' +
+  return '<main class="login">' + themeBtn('theme-btn on-login') + '<section class="card">' + '<img class="brandlogo logo-light" src="/img/logo.svg" alt="Almuntazar Canada" width="190" height="167"><img class="brandlogo logo-dark" src="/img/logo-reverse.svg" alt="Almuntazar Canada" width="190" height="167">' + '<h1 style="text-align:center;font-size:20px">Sign in</h1>' +
     '<form data-form="login" style="display:flex;flex-direction:column;gap:12px">' +
       '<div class="field"><label for="li-u">Username</label><input id="li-u" name="username" autocomplete="username" autocapitalize="off" spellcheck="false" value="' + esc(f.username) + '" required></div>' +
       '<div class="field"><label for="li-p">Password</label><input id="li-p" name="password" type="password" autocomplete="current-password" required></div>' +
@@ -124,7 +124,7 @@ function render() {
   let body;
   try { body = fn(); } catch (e) { console.error(e); body = '<section class="card"><p class="err">This page could not be shown.</p>' + act('nav', firstTab().role + ':' + firstTab().tab, 'Go to the first page') + '</section>'; }
   app.innerHTML =
-    '<header class="bar"><div class="bar-in"><div class="brand">Almuntazar Academy</div>' +
+    '<header class="bar"><div class="bar-in"><div class="brand"><img src="/img/mark-reverse.svg" alt="" width="45" height="40"><span class="bw"><span class="b1">ALMUNTAZAR</span><span class="b2">ACADEMY</span></span></div>' +
     '<div class="acct"><span><span class="nm">' + esc(ME.name) + '</span><span class="role"> · ' + esc(ME.label) + '</span></span>' + themeBtn('theme-btn') + act('pwOpen', '', 'Password', '') + act('logout', '', 'Sign out', '') + '</div></div></header>' +
     (META.temporary ? '<div class="note warn-note"><div>No permanent database is connected, so changes here can be lost at any time. Connect Neon Postgres in Vercel to keep them.</div></div>' : '') +
     '<div class="shell' + (showNav ? ' has-nav' : '') + '">' + (showNav ? n.side : '') +
@@ -489,7 +489,7 @@ window.addEventListener('beforeunload', ev => { if (S.exam || S.draft) { ev.prev
 
 /* ---------- start ---------- */
 function startupError(msg) {
-  document.getElementById('app').innerHTML = '<main class="login"><section class="card"><div class="brandbig">Almuntazar Academy</div>' +
+  document.getElementById('app').innerHTML = '<main class="login"><section class="card">' + '<img class="brandlogo logo-light" src="/img/logo.svg" alt="Almuntazar Canada" width="190" height="167"><img class="brandlogo logo-dark" src="/img/logo-reverse.svg" alt="Almuntazar Canada" width="190" height="167">' +
     '<h1 style="text-align:center;font-size:20px">The app could not start</h1><p class="err" role="alert">' + esc(msg) + '</p>' +
     '<button class="btn primary wide" type="button" onclick="location.reload()">Try again</button></section></main>';
 }
