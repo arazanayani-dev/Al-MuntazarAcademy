@@ -61,8 +61,37 @@ function coordCard() {
 /* Registrations: a student is first registered here, then allocated a class. Students who left a class without
    moving to another one wait here too. */
 function regsCard() {
-  return '<section class="card"><div class="card-h"><h2>Waiting for a class</h2>' + chip(S.regs.length ? 'gold' : 'mute', S.regs.length + ' waiting') + '</div><div class="rows">' +
-    (S.regs.map(r => '<div class="row"><div><div class="b">' + esc(r.name) + '</div><div class="sub small">' + (ME.role === 'super' ? esc((S.locations.find(l => l.code === r.loc) || {}).name || r.loc) + ' · ' : '') + group(r.g) + ' · ' + (r.sem ? (r.removed ? 'wants ' : 'repeats ') + esc(course(r.course).name) + ' Semester ' + r.sem + (r.from ? ' · was in ' + esc(r.from) : '') : 'wants ' + esc(course(r.course).name)) + (r.city ? ' · ' + esc(r.city) : '') + '</div>' + (r.phone || r.email || r.dob ? '<div class="sub small">' + [r.dob ? 'Born ' + fd(r.dob).slice(4) + ' ' + r.dob.slice(0, 4) : '', esc(r.phone || ''), esc(r.email || '')].filter(Boolean).join(' · ') + '</div>' : '') + '</div><div class="btns">' + editBtn('reg', r.id) + (r.sid ? '' : act('regRemove', r.id, 'Remove')) + act('allocOpen', r.id, 'Allocate a class', 'btn primary') + '</div></div>').join('') || '<p class="empty">Nobody is waiting. Students you register appear here until they are given a class.</p>') + '</div></section>';
+  /* search by name, phone or email, then 20 to a page */
+  const q = String(S.p.rq || '').trim().toLowerCase();
+  const list = S.regs.filter(r => !q || [r.name, r.phone, r.email, r.city].some(v => String(v || '').toLowerCase().includes(q)));
+  const pg = pageSlice(list, S.p.pg_regs);
+  return '<section class="card"><div class="card-h"><h2>Waiting for a class</h2>' + chip(S.regs.length ? 'gold' : 'mute', S.regs.length + ' waiting') + '</div>' +
+    (S.regs.length > 5 ? '<div class="field" style="max-width:360px"><label for="rq">Search</label><input id="rq" type="search" placeholder="Name, phone or email" data-bind="p.rq" data-rerender="1" value="' + esc(S.p.rq || '') + '"></div>' : '') +
+    '<div class="rows">' +
+    (pg.items.map(r => '<div class="row"><div><div class="b">' + esc(r.name) + '</div><div class="sub small">' + (ME.role === 'super' ? esc((S.locations.find(l => l.code === r.loc) || {}).name || r.loc) + ' · ' : '') + group(r.g) + ' · ' + (r.sem ? (r.removed ? 'wants ' : 'repeats ') + esc(course(r.course).name) + ' Semester ' + r.sem + (r.from ? ' · was in ' + esc(r.from) : '') : 'wants ' + esc(course(r.course).name)) + (r.city ? ' · ' + esc(r.city) : '') + '</div>' + (r.phone || r.email || r.dob ? '<div class="sub small">' + [r.dob ? 'Born ' + fd(r.dob).slice(4) + ' ' + r.dob.slice(0, 4) : '', esc(r.phone || ''), esc(r.email || '')].filter(Boolean).join(' · ') + '</div>' : '') + '</div><div class="btns">' + editBtn('reg', r.id) + (r.sid ? '' : act('regRemove', r.id, 'Remove')) + act('allocOpen', r.id, 'Allocate a class', 'btn primary') + '</div></div>').join('') ||
+      (q ? '<p class="empty">Nobody waiting matches "' + esc(S.p.rq) + '".</p>' : '<p class="empty">Nobody is waiting. Students you register appear here until they are given a class.</p>')) + '</div>' + pager('regs', pg) + '</section>';
+}
+/* The classes students have been allocated to, each opening its list of students */
+const regClasses = () => S.classes.filter(c => ME.role === 'super' || c.loc === ME.loc);
+function allocatedCard() {
+  const cid = S.p.rcls;
+  const c = cid && S.classes.find(x => x.id === cid);
+  if (c) {
+    const q = String(S.p.raq || '').trim().toLowerCase();
+    const all = classStudents(c.id).slice().sort((a, b) => (b.joined || '') < (a.joined || '') ? -1 : (b.joined || '') > (a.joined || '') ? 1 : a.name < b.name ? -1 : 1);
+    const list = all.filter(s => !q || [s.name, s.phone, s.email, s.city].some(v => String(v || '').toLowerCase().includes(q)));
+    const pg = pageSlice(list, S.p.pg_ralloc);
+    return '<section class="card"><div>' + act('regClass', '', 'All classes', 'link') + '</div>' +
+      '<div class="card-h"><div><h2>' + esc(c.id) + '</h2><div class="sub small">' + esc(courseLabel(c)) + ' · ' + group(c.g) + ' · ' + DOW[c.day] + ' ' + ft(c.time) + ' · ' + esc(teacherName(c.teacherId) || 'Awaiting teacher') + '</div></div><div class="btns">' + chip('ok', all.length + (all.length === 1 ? ' student' : ' students')) + act('openClass', c.id, 'Open class page') + '</div></div>' +
+      (all.length > 5 ? '<div class="field" style="max-width:360px"><label for="raq">Search</label><input id="raq" type="search" placeholder="Name, phone or email" data-bind="p.raq" data-rerender="1" value="' + esc(S.p.raq || '') + '"></div>' : '') +
+      tbl([['Student'], ['Contact'], ['City'], ['In this class since'], ['Allocated by']], pg.items.map(s => '<tr><th scope="row">' + esc(s.name) + '</th><td>' + esc([s.phone, s.email].filter(Boolean).join(' · ')) + '</td><td>' + esc(s.city || '') + '</td><td>' + (s.joined ? fd(s.joined) : '') + '</td><td>' + esc(s.allocatedBy || '') + '</td></tr>')) + pager('ralloc', pg) + '</section>';
+  }
+  const rows = regClasses().map(x => ({ c: x, n: classStudents(x.id).length, last: classStudents(x.id).reduce((m, s) => (s.joined || '') > m ? s.joined : m, '') }))
+    .sort((a, b) => (ended(a.c) ? 1 : 0) - (ended(b.c) ? 1 : 0) || (a.c.id < b.c.id ? -1 : 1));
+  const total = rows.reduce((t, r) => t + r.n, 0);
+  const pg = pageSlice(rows, S.p.pg_rclasses);
+  return '<section class="card"><div class="card-h"><h2>Allocated to a class</h2>' + chip('ok', total + (total === 1 ? ' student' : ' students') + ' in ' + rows.length + (rows.length === 1 ? ' class' : ' classes')) + '</div>' +
+    tbl([['Class'], ['Course'], ['Group'], ['Teacher'], ['Students', 1], ['Last allocated'], ['']], pg.items.map(r => '<tr><th scope="row">' + act('regClass', r.c.id, esc(r.c.id), 'link') + (ended(r.c) ? ' ' + chip('mute', 'Finished') : '') + '</th><td>' + esc(courseLabel(r.c)) + '</td><td>' + group(r.c.g) + '</td><td>' + esc(teacherName(r.c.teacherId) || 'Awaiting teacher') + '</td><td class="r">' + r.n + '</td><td>' + (r.last ? fd(r.last) : '–') + '</td><td>' + act('regClass', r.c.id, 'View students') + '</td></tr>')) + pager('rclasses', pg) + '</section>';
 }
 function regForm() {
   return '<section class="card"><h2>Register a new student</h2><form class="form" data-form="regAdd">' +
@@ -83,7 +112,12 @@ function regsSummary() {
   return '<section class="card"><div class="card-h"><h2>Registrations</h2>' + chip(S.regs.length ? 'gold' : 'mute', S.regs.length + ' waiting for a class') + '</div><div class="btns">' + act('nav', 'regs', 'Register or allocate students', 'btn primary') + '</div></section>';
 }
 export function viewRegistrations() {
-  return '<div class="head"><div><h1>' + (ME.role === 'super' ? 'Registrations' : 'Registrations in ' + esc(ME.locName)) + '</h1><div class="sub">Register a student first, then allocate a class. Once in a class, they can be moved from the class page.</div></div></div>' + regForm() + regsCard();
+  const tab = S.p.rtab === 'allocated' ? 'allocated' : 'waiting';
+  const allocated = regClasses().reduce((t, c) => t + classStudents(c.id).length, 0);
+  const tb = (k, label, n) => '<button type="button" class="pick' + (tab === k ? ' on' : '') + '" aria-pressed="' + (tab === k) + '" data-act="regTab" data-arg="' + k + '">' + label + ' (' + n + ')</button>';
+  return '<div class="head"><div><h1>' + (ME.role === 'super' ? 'Registrations' : 'Registrations in ' + esc(ME.locName)) + '</h1><div class="sub">Register a student first, then allocate a class. Allocated students move to the Allocated tab, listed by class.</div></div></div>' +
+    '<div class="seg" role="group" aria-label="Registrations" style="max-width:480px">' + tb('waiting', 'Waiting', S.regs.length) + tb('allocated', 'Allocated', allocated) + '</div>' +
+    (tab === 'waiting' ? regForm() + regsCard() : allocatedCard());
 }
 
 export function viewLocHome() {
@@ -149,22 +183,4 @@ export function viewCoordHome() {
     '<div class="cols"><div class="main">' + myCallsCard() + regsSummary() +
       '<section class="card"><h2>Classes awaiting a teacher</h2><div class="rows">' + (await_.map(c => '<div class="row"><div><div class="b">' + c.id + '</div><div class="sub small">' + esc(courseLabel(c)) + ' · ' + group(c.g) + ' · ' + DOW[c.day] + ' ' + ft(c.time) + ' · waiting for the primary or secondary responsible person</div></div></div>').join('') || '<p class="empty">Every class has a teacher.</p>') + '</div></section></div>' +
     '<div class="side">' + coordCard() + '<section class="card"><h2>My action items</h2><div class="rows">' + actionRows(ME.name, true) + '</div></section></div></div>';
-}
-
-/* New students enter the system only here. Location staff register them; the location manager allocates a class. */
-export function viewRegs() {
-  const can = ME.role === 'locadmin'; const regs = S.regs.slice().sort((a, b) => (a.date || '') < (b.date || '') ? -1 : 1);
-  const row = r => '<tr><th scope="row">' + esc(r.name) + (r.notes ? '<div class="sub small" style="font-weight:500;white-space:normal">' + esc(r.notes) + '</div>' : '') + '</th><td>' + group(r.g) + '</td><td>' + esc(course(r.course).name) + '</td><td>' + esc(r.city || '') + '</td><td>' + esc([r.phone, r.email].filter(Boolean).join(' · ')) + '</td><td>' + (r.date ? fd(r.date) : '') + (r.by ? '<div class="sub small">by ' + esc(r.by) + '</div>' : '') + '</td><td><div class="btns">' + (can ? act('allocOpen', r.id, 'Allocate a class', 'btn primary') : '') + act('regRemove', r.id, 'Remove', 'link') + '</div></td></tr>';
-  return '<div class="head"><div><h1>Registrations</h1><div class="sub">Every new student is registered here first, then ' + (can ? 'you allocate' : 'the location manager allocates') + ' them to a class</div></div></div>' +
-    '<div class="cols"><section class="card main"><div class="card-h"><h2>Waiting for a class</h2>' + chip('gold', regs.length + ' waiting') + '</div>' +
-      tbl([['Student'], ['Group'], ['Wants'], ['City'], ['Contact'], ['Registered'], ['']], regs.map(row)) + '</section>' +
-    '<section class="card side"><h2>Register a student</h2><form data-form="regAdd" style="display:flex;flex-direction:column;gap:12px">' +
-      '<div class="field"><label for="rg-n">Full name</label><input id="rg-n" name="name" required></div>' +
-      '<div class="form"><div class="field"><label for="rg-g">Group</label><select id="rg-g" name="g">' + opts([['F', 'Sisters'], ['M', 'Brothers']], 'F') + '</select></div>' +
-      '<div class="field"><label for="rg-c">Course wanted</label><select id="rg-c" name="course">' + opts(S.courses.map(c => [c.code, c.name]), 'INR') + '</select></div></div>' +
-      '<div class="field"><label for="rg-ci">City</label><input id="rg-ci" name="city"></div>' +
-      '<div class="form"><div class="field"><label for="rg-p">Phone or WhatsApp</label><input id="rg-p" name="phone" type="tel" inputmode="tel"></div>' +
-      '<div class="field"><label for="rg-e">Email</label><input id="rg-e" name="email" type="email"></div></div>' +
-      '<div class="field"><label for="rg-no">Notes (optional)</label><textarea id="rg-no" name="notes" rows="2"></textarea></div>' +
-      '<button class="btn primary" type="submit">Register student</button></form></section></div>';
 }

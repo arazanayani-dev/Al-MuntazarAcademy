@@ -1373,3 +1373,12 @@ test('sample accounts follow a changed SEED_PASSWORD, and ADMIN_PASSWORD always 
     if (saved.admin === undefined) delete process.env.ADMIN_PASSWORD; else process.env.ADMIN_PASSWORD = saved.admin;
   }
 });
+test('an allocated student records who allocated them and leaves the waiting list', async () => {
+  const mgr = await login('jafar');
+  const r = await enrol(mgr, 'MUM-BAS-003', 'Ruqayya Allocated');
+  assert.equal(r.status, 200);
+  const s = r.body.data.students.find(x => x.name === 'Ruqayya Allocated');
+  assert.equal(s.classId, 'MUM-BAS-003');
+  assert.equal(s.allocatedBy, 'Br. Jafar');
+  assert.ok(!r.body.data.regs.some(x => x.name === 'Ruqayya Allocated'));
+});

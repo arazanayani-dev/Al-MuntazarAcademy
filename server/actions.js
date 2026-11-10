@@ -451,8 +451,8 @@ export const ACTIONS = {
     const r = ctx.store.find('regs', str(a.rid)); need(r && (ctx.user.role === 'super' || r.loc === ctx.user.loc), 'Registration not found.', 404);
     const c = ctx.store.find('classes', str(a.cid)); need(c && !ended(c), 'Choose a class.'); need(c.g === r.g, 'Choose a ' + (r.g === 'F' ? 'sisters' : 'brothers') + ' class.');
     const s = r.sid && ctx.store.find('students', r.sid);
-    if (s) { s.classId = c.id; s.joined = ctx.today; ctx.store.put('students', s); }
-    else ctx.store.put('students', { id: uid('s'), name: r.name, first: r.first, last: r.last, g: r.g, dob: r.dob, phone: r.phone, email: r.email, classId: c.id, joined: ctx.today, city: r.city, tzName: 'India', tzOff: 5.5, prefs: { email: true, wa: true, absence: true } });
+    if (s) { s.classId = c.id; s.joined = ctx.today; s.allocatedBy = ctx.user.name; ctx.store.put('students', s); }
+    else ctx.store.put('students', { id: uid('s'), name: r.name, first: r.first, last: r.last, g: r.g, dob: r.dob, phone: r.phone, email: r.email, classId: c.id, joined: ctx.today, allocatedBy: ctx.user.name, registered: r.date || null, city: r.city, tzName: 'India', tzOff: 5.5, prefs: { email: true, wa: true, absence: true } });
     ctx.store.del('regs', r.id);
     return { toast: r.name + ' added to ' + c.id + ' with status New' };
   } },

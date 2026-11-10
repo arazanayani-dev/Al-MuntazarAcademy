@@ -167,6 +167,8 @@ const A = {
   report(code) { go('reports', { report: 'location', loc: code }); },
   openClass(cid) { S.back = { view: S.view, p: S.p }; go('class', { cid }); },
   marks(arg) { const a = arg.split('|'); S.back = { view: S.view, p: S.p }; go('marks', { cid: a[0], sem: +a[1] }); },
+  regTab(t) { S.p.rtab = t; S.p.rcls = ''; delete S.p.pg_regs; delete S.p.pg_rclasses; delete S.p.pg_ralloc; },
+  regClass(cid) { S.p.rcls = cid; S.p.raq = ''; delete S.p.pg_ralloc; window.scrollTo(0, 0); },
   page(arg) {
     const i = arg.lastIndexOf('|'); const key = arg.slice(0, i); S.p['pg_' + key] = +arg.slice(i + 1);
     setTimeout(() => { const el = document.getElementById('pg-' + key); const card = el && el.closest('.card'); if (card) card.scrollIntoView({ block: 'start' }); }, 0);
