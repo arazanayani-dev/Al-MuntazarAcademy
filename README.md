@@ -1,6 +1,6 @@
-# Almuntazar Academy
+# Almuntazar Canada
 
-A web application for running Almuntazar Academy across all of its locations: classes and teachers, session logs and attendance, follow-up of absent students, weekly coordination calls, the question bank and online exams, results and certificates, teaching materials, teacher training and weekly Quran and book reading.
+A web application for running Almuntazar Canada across all of its locations: classes and teachers, session logs and attendance, follow-up of absent students, weekly coordination calls, the question bank and online exams, results and certificates, teaching materials, teacher training and weekly Quran and book reading.
 
 It is built from the clickable prototype, kept in [`docs/prototype.html`](docs/prototype.html). Every screen from the prototype is here. Data is kept in a database, each person signs in with their own account, and exams are marked on the server.
 

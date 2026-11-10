@@ -302,7 +302,7 @@ export async function createApp(opts = {}) {
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const port = +process.env.PORT || 3000;
   createApp().then(
-    app => app.listen(port, () => console.log('Almuntazar Academy running on http://localhost:' + port)),
+    app => app.listen(port, () => console.log('Almuntazar Canada running on http://localhost:' + port)),
     e => { console.error('Could not start:', e.message); process.exit(1); }
   );
 }

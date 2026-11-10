@@ -233,7 +233,7 @@ export function modalHtml() {
   }
   if (m.t === 'cert') {
     const s = myStudent(); const x = certsFor(s).find(k => k.key === m.key);
-    b = '<div class="cert"><img class="clogo" src="/img/logo.svg" alt="Almuntazar Canada" width="120" height="106"><div class="cn">Almuntazar Academy</div><div class="eyebrow">Certificate</div><div class="sub">This certifies that</div><div class="nm">' + esc(s.name) + '</div><div>' + esc(x.line) + '.</div><div class="sub small">Issued ' + fd(x.date || TODAY) + ' · No. ' + esc(x.no) + '</div><div class="sig">Dean, Almuntazar Academy</div></div>' +
+    b = '<div class="cert"><img class="clogo" src="/img/logo.svg" alt="Almuntazar Canada" width="120" height="106"><div class="eyebrow">Certificate</div><div class="sub">This certifies that</div><div class="nm">' + esc(s.name) + '</div><div>' + esc(x.line) + '.</div><div class="sub small">Issued ' + fd(x.date || TODAY) + ' · No. ' + esc(x.no) + '</div><div class="sig">Dean, Almuntazar Canada</div></div>' +
       '<div class="btns">' + act('print', '', 'Print or save as PDF', 'btn primary') + act('modalClose', '', 'Close') + '</div>';
   }
   if (m.t === 'import') {

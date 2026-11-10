@@ -124,7 +124,7 @@ function render() {
   let body;
   try { body = fn(); } catch (e) { console.error(e); body = '<section class="card"><p class="err">This page could not be shown.</p>' + act('nav', firstTab().role + ':' + firstTab().tab, 'Go to the first page') + '</section>'; }
   app.innerHTML =
-    '<header class="bar"><div class="bar-in"><div class="brand"><img src="/img/mark-reverse.svg" alt="" width="45" height="40"><span class="bw"><span class="b1">ALMUNTAZAR</span><span class="b2">ACADEMY</span></span></div>' +
+    '<header class="bar"><div class="bar-in"><div class="brand"><img src="/img/mark-reverse.svg" alt="" width="45" height="40"><span class="bw"><span class="b1">ALMUNTAZAR</span><span class="b2">CANADA</span></span></div>' +
     '<div class="acct"><span><span class="nm">' + esc(ME.name) + '</span><span class="role"> · ' + esc(ME.label) + '</span></span>' + themeBtn('theme-btn') + act('pwOpen', '', 'Password', '') + act('logout', '', 'Sign out', '') + '</div></div></header>' +
     (META.temporary ? '<div class="note warn-note"><div>No permanent database is connected, so changes here can be lost at any time. Connect Neon Postgres in Vercel to keep them.</div></div>' : '') +
     '<div class="shell' + (showNav ? ' has-nav' : '') + '">' + (showNav ? n.side : '') +

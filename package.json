@@ -2,7 +2,7 @@
   "name": "almuntazar-academy",
   "version": "1.0.0",
   "private": true,
-  "description": "Almuntazar Academy: classes, attendance, exams, materials and coordination for every location",
+  "description": "Almuntazar Canada: classes, attendance, exams, materials and coordination for every location",
   "type": "module",
   "engines": {
     "node": ">=22.13"
