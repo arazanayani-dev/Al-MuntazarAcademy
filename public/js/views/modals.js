@@ -6,6 +6,7 @@ import {
   cls, stu, course, courseLabel, group, classStudents, classSessions, stuStats, statChip, semResult, semReady, moveTargets, ended, levelLabel, assignable, paperCounts, examSubs, nextDate, whenFor, nextCounter, QTYPE, myLoc, myStudent, teacherName, levelRank, teacherTitle
 } from '../logic.js';
 import { certsFor } from './student.js';
+import { certificateHtml } from './certificate.js';
 import { callPeople } from '/shared/callpeople.js';
 import { owners } from './location.js';
 import { editModal } from './edit.js';
@@ -233,7 +234,7 @@ export function modalHtml() {
   }
   if (m.t === 'cert') {
     const s = myStudent(); const x = certsFor(s).find(k => k.key === m.key);
-    b = '<div class="cert"><img class="clogo" src="/img/logo.svg" alt="Almuntazar Canada" width="120" height="106"><div class="eyebrow">Certificate</div><div class="sub">This certifies that</div><div class="nm">' + esc(s.name) + '</div><div>' + esc(x.line) + '.</div><div class="sub small">Issued ' + fd(x.date || TODAY) + ' · No. ' + esc(x.no) + '</div><div class="sig">Dean, Almuntazar Canada</div></div>' +
+    b = certificateHtml(s, x, x.date || TODAY) +
       '<div class="btns">' + act('print', '', 'Print or save as PDF', 'btn primary') + act('modalClose', '', 'Close') + '</div>';
   }
   if (m.t === 'import') {
@@ -272,5 +273,5 @@ export function modalHtml() {
     const u = S.users.find(x => x.id === m.id);
     b = '<h2>Reset password for ' + esc(u.name) + '</h2><form data-form="userReset" style="display:flex;flex-direction:column;gap:12px"><input type="hidden" name="id" value="' + esc(u.id) + '"><div class="field"><label for="ur-p">New password (8 characters or more)</label><input id="ur-p" name="password" type="password" autocomplete="new-password" minlength="8" required></div><p class="sub small">They will be signed out everywhere and must use the new password.</p><div class="btns"><button class="btn primary" type="submit">Reset password</button>' + act('modalClose', '', 'Cancel') + '</div></form>';
   }
-  return '<div class="overlay" data-act="overlay"><div class="modal" role="dialog" aria-modal="true">' + b + (m.err ? '<p class="err" role="alert">' + esc(m.err) + '</p>' : '') + '</div></div>';
+  return '<div class="overlay" data-act="overlay"><div class="modal' + (m.t === 'cert' ? ' modal-cert' : '') + '" role="dialog" aria-modal="true">' + b + (m.err ? '<p class="err" role="alert">' + esc(m.err) + '</p>' : '') + '</div></div>';
 }
