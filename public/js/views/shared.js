@@ -9,6 +9,7 @@ import {
   stuStats, statChip, semResult, semReady, ended, examState, examSubs, paperCounts, readKind, matScope, levelRank, best, chaptersFor, markDetail, rd, lastWeek, TG, readAlert, lesson, verseRef, versesBefore, subName, QTYPE
 } from '../logic.js';
 import { editBtn } from './edit.js';
+import { certsFor } from './student.js';
 import { readUnits } from '/shared/readunits.js';
 import { chapterWindow, chapterState, chapterDue } from '/shared/grading.js';
 
@@ -104,7 +105,9 @@ export function viewClass() {
       (canMove ? act('closeOpen', c.id, 'Close class') : '') +
       ((ME.role === 'teacher' || ME.role === 'locadmin') && !ended(c) ? act('assistOpen', c.id, assistant ? 'Change class assistant' : 'Choose class assistant') : '') +
       (canEdit ? editBtn('class', c.id, ME.role === 'super' ? 'Edit class and start date' : 'Edit class') : '') +
-      (c.status === 'completed' ? chip('ok', 'Course completed') : '') + (c.status === 'closed' ? chip('mute', 'Closed') : '') + sems.map(s => act('marks', c.id + '|' + s, 'Semester ' + s + ' marksheet')).join('') + '</div></div>' +
+      (c.status === 'completed' ? chip('ok', 'Course completed') : '') +
+      /* staff can view and print the certificates the class's students have earned */
+      (ME.role !== 'student' && studs.some(x => certsFor(x).length) ? act('certsOpen', c.id, 'Certificates', c.status === 'completed' ? 'btn primary' : 'btn') : '') + (c.status === 'closed' ? chip('mute', 'Closed') : '') + sems.map(s => act('marks', c.id + '|' + s, 'Semester ' + s + ' marksheet')).join('') + '</div></div>' +
     (c.closed ? '<section class="card"><div class="b">Closed on ' + fd(c.closed.date) + ' by ' + esc(c.closed.by) + '</div><div class="sub">' + esc(c.closed.reason) + ' · ' + c.closed.moved + ' moved to other classes, ' + c.closed.back + ' sent back to registrations</div></section>' : '') +
     '<section class="tiles">' + tile('Teacher', esc(teacherName(c.teacherId) || 'Awaiting'), assistant ? 'Assistant: ' + esc(assistant.name) : 'No class assistant yet') + tile('Students', studs.length, '') + tile('Attendance', pct(classAtt(c.id)), 'This semester') + tile('Syllabus chart', weeksDone(c.id) ? weekLabel(c, weeksDone(c.id)) : 'Not started', c.startOn > TODAY ? 'Starts ' + fd(c.startOn) : '') + '</section>' +
     (!ended(c) ? '<section class="card"><div class="rows">' + examRow(c) + '</div>' + chapterRows(c) + '</section>' : '') +

@@ -368,6 +368,8 @@ const A = {
   async callSave() { await call('callSave', S.form); S.modal = null; },
   reminder(sid) { S.modal = { t: 'reminder', sid }; },
   cert(key) { S.modal = { t: 'cert', key }; },
+  certsOpen(cid) { S.modal = { t: 'certs', cid }; },
+  certFor(arg) { const [sid, key, cid] = arg.split('::'); S.modal = { t: 'cert', sid, key, cid }; },
   modalClose() { S.modal = null; },
   async pref(key) { await call('pref', { key }); },
   logOpen(sid) { const x = S.sessions.find(s => s.id === sid); const c = cls(x.classId); S.back = { view: S.view, p: S.p }; S.draft = { sid, held: true, reason: '', verse: verseRef(versesBefore(c, x.week) + 3), covered: { b: true, l: true, e: true }, att: {}, note: '' }; go('log'); },

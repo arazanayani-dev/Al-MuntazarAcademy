@@ -233,9 +233,20 @@ export function modalHtml() {
       '<div class="btns">' + act('modalClose', '', 'Close', 'btn primary') + '</div>';
   }
   if (m.t === 'cert') {
-    const s = myStudent(); const x = certsFor(s).find(k => k.key === m.key);
-    b = certificateHtml(s, x, x.date || TODAY) +
-      '<div class="btns">' + act('print', '', 'Print or save as PDF', 'btn primary') + act('modalClose', '', 'Close') + '</div>';
+    /* a student's own certificate, or one staff opened from the class page (m.sid) */
+    const s = m.sid ? stu(m.sid) : myStudent(); const x = s && certsFor(s).find(k => k.key === m.key);
+    b = x ? certificateHtml(s, x, x.date || TODAY) +
+      '<div class="btns">' + act('print', '', 'Print or save as PDF', 'btn primary') + (m.cid ? act('certsOpen', m.cid, 'All certificates') : '') + act('modalClose', '', 'Close') + '</div>'
+      : '<p>This certificate is not available.</p><div class="btns">' + act('modalClose', '', 'Close', 'btn primary') + '</div>';
+  }
+  if (m.t === 'certs') {
+    /* every certificate earned by the students of a class, for staff to view and print */
+    const c = cls(m.cid); const rows = classStudents(c.id).map(s => ({ s, list: certsFor(s) })).filter(r => r.list.length);
+    b = '<h2>Certificates · ' + esc(c.id) + '</h2><p class="sub small">Open a certificate to view it, then print it or save it as a PDF.</p>' +
+      (rows.length ? '<div class="rows">' + rows.map(r => '<div class="row" style="align-items:flex-start"><div><div class="b">' + esc(r.s.name) + '</div>' +
+        r.list.map(x => '<div class="btns" style="margin-top:6px;align-items:center"><span class="small">' + esc(x.title) + '</span>' + act('certFor', r.s.id + '::' + x.key + '::' + c.id, 'View', 'btn') + '</div>').join('') + '</div></div>').join('') + '</div>'
+        : '<p class="empty">No student in this class has a certificate yet. Certificates come with published semester results, passed chapter papers and completing the course.</p>') +
+      '<div class="btns">' + act('modalClose', '', 'Close', 'btn primary') + '</div>';
   }
   if (m.t === 'import') {
     const P = S.paper;

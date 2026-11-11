@@ -37,11 +37,14 @@ function readingCard(s, c) {
    exam was taken in, so semesters passed before a student moved class still count. */
 export function certsFor(s) {
   const c = cls(s.classId); const out = [];
-  /* every level this student has studied, the current one first: moving up a level keeps earlier certificates */
-  (s.completed || []).forEach(x => out.push({ key: x.course + '|done', title: course(x.course).name + ' · Course completed', line: 'has completed the ' + course(x.course).name + ' course', no: x.cid + '-C-' + s.id.toUpperCase() }));
-  const levels = [...new Set([c.course, ...(s.completed || []).map(x => x.course)])];
+  /* every level this student has studied, the current one first: moving up a level keeps earlier certificates.
+     A student still in a class marked completed has completed its course, even if their own record missed it. */
+  const completed = (s.completed || []).slice();
+  if (c && c.status === 'completed' && !completed.some(x => x.course === c.course && x.cid === c.id)) completed.push({ course: c.course, cid: c.id, date: ((c.history || []).slice(-1)[0] || {}).date });
+  completed.forEach(x => out.push({ key: x.course + '|done', title: course(x.course).name + ' · Course completed', line: 'has completed the ' + course(x.course).name + ' course', no: x.cid + '-C-' + s.id.toUpperCase() }));
+  const levels = [...new Set([...(c ? [c.course] : []), ...completed.map(x => x.course)])];
   levels.forEach(co => {
-    for (let sem = co === c.course ? c.sem : course(co).sems; sem >= 1; sem--) {
+    for (let sem = c && co === c.course ? c.sem : course(co).sems; sem >= 1; sem--) {
       const r = S.results.find(r => r.sid === s.id && r.course === co && r.sem === sem && S.published[r.cid + '|' + sem]);
       if (r && semResult(s.id, co, sem) === 'pass') out.push({ key: co + '|' + sem, title: course(co).name + ' · Semester ' + sem, line: 'has passed Semester ' + sem + (BELIEF[sem - 1] ? ' (' + BELIEF[sem - 1] + ')' : '') + ' of the ' + course(co).name + ' course', no: r.cid + '-S' + sem + '-' + s.id.toUpperCase() });
     }
@@ -108,7 +111,10 @@ function chapterPapersCard(s, c) {
 }
 
 export function viewStudentExams() {
-  const s = myStudent(); const c = s && cls(s.classId); if (!c) return pageHead('Exams and certificates', '') + noClass();
+  const s = myStudent(); const c = s && cls(s.classId);
+  const certList = list => '<section class="card"><div class="eyebrow">Certificates</div><div class="rows">' + (list.map(x => '<div class="row"><div><div class="b">' + esc(x.title) + '</div></div>' + act('cert', x.key, 'View') + '</div>').join('') || '<p class="empty">Certificates appear here when results are published.</p>') + '</div></section>';
+  /* not in a class now: earlier certificates still show */
+  if (!c) return pageHead('Exams and certificates', '') + noClass() + (s && certsFor(s).length ? certList(certsFor(s)) : '');
   const st = examState(c); const subs = examSubs(); const pubNow = S.published[c.id + '|' + c.sem];
   const resRows = sem => '<div class="rows">' + S.subjects.filter(x => x.exam).map(x => x.key).map(kk => { const v = best(s.id, c.course, sem, kk); return '<div class="row"><div>' + esc(subName(kk)) + '</div><div class="b num">' + (v === null ? 'Not taken' : v + '%') + '</div>' + (v === null ? '' : v >= 50 ? chip('ok', 'Pass') : chip('warn', 'Fail')) + '</div>'; }).join('') + '</div>';
   /* a subject's semester exam: not taken, passed, or below the pass mark (which can be sat again while the window is open) */
@@ -127,7 +133,7 @@ export function viewStudentExams() {
   return pageHead('Exams and certificates', esc(courseLabel(c))) +
     chapterPapersCard(s, c) +
     '<section class="card"><div class="eyebrow">Exams</div>' + exam + prev + '</section>' +
-    '<section class="card"><div class="eyebrow">Certificates</div><div class="rows">' + (certs.map(x => '<div class="row"><div><div class="b">' + esc(x.title) + '</div></div>' + act('cert', x.key, 'View') + '</div>').join('') || '<p class="empty">Certificates appear here when results are published.</p>') + '</div></section>';
+    certList(certs);
 }
 
 export function viewStudentMaterials() {
