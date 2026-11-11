@@ -12,23 +12,12 @@ const maker = () => ME.role === 'acmaker';
 /* status chip, plus the approver's note when an item was sent back */
 const status = x => statusChip(x) + (x.status === 'rejected' && x.reviewNote ? '<div class="small warn-t" style="flex-basis:100%">Note from ' + esc(x.reviewedBy || 'the approver') + ': ' + esc(x.reviewNote) + '</div>' : '');
 const pendingNote = (n, what) => n ? '<p class="sub small">' + n + ' ' + what + (n === 1 ? ' is' : ' are') + ' waiting for approval' + (maker() ? '.' : '. ' + act('nav', 'review', 'Review now', 'link')) + '</p>' : '';
-/* a syllabus that fills a chart column: how many chapters were read, or why none could be */
-const chartChip = m => m.chart ? chip('ok', approved(m) ? 'Fills the ' + subName(m.chart.sub) + ' column of the chart' : m.chart.chapters + ' chapters read for the ' + subName(m.chart.sub) + ' column of the chart') : m.chartNote ? '<div class="small warn-t" style="flex-basis:100%">' + esc(m.chartNote) + '</div>' : '';
-const chartPlan = m => m.chart ? '<div class="small" style="margin-top:6px"><span class="b">Weekly topics for the ' + esc(course(m.course).name) + ' Semester ' + m.sem + ' chart (' + esc(subName(m.chart.sub)) + ')</span>, used once this syllabus is approved:<ol style="margin:4px 0 0;padding-left:22px">' + m.chart.weeks.map(w => '<li>' + esc(w) + '</li>').join('') + '</ol></div>' : m.chartNote ? '<div class="small warn-t">' + esc(m.chartNote) + '</div>' : '';
-/* questions drafted by AI from a syllabus: progress, how many, or why it could not */
-const qgenChip = m => {
-  const g = m.qgen; if (!g) return '';
-  if (g.status === 'queued') return chip('gold', 'Questions: waiting to be drafted');
-  if (g.status === 'running') return chip('gold', g.part === 'teacher' ? 'Drafting the teacher readiness quiz…' : 'Drafting questions… ' + (g.done || 0) + ' of ' + (g.total || '?') + ' steps (each chapter, then the teacher quiz)');
-  const mine = S.questions.filter(q => q.source === m.id && !q.retired); const tq = mine.filter(q => q.aud === 'teacher');
-  const waiting = mine.filter(q => q.status === 'pending').length; const ok = mine.filter(q => approved(q)).length;
-  return (g.made ? chip('ok', ok + ' questions approved · ' + waiting + ' waiting' + ' (chapter papers' + (tq.length ? ' and a ' + tq.length + '-question teacher quiz)' : ')')) : '') +
-    (approved(m) && m.chart && g.status === 'done' ? act('qgenRetry', m.id + '|teacher', tq.length ? 'Redraft teacher quiz' : 'Draft teacher quiz', 'btn') : '') +
-    /* chapter pools drafted before pools were 24: a paper draws 12 at random, so a bigger pool makes retakes a real test */
-    (() => { const pools = {}; mine.filter(q => !q.aud && q.chapter && q.status !== 'rejected').forEach(q => { pools[q.chapter] = (pools[q.chapter] || 0) + 1; }); const small = Object.values(pools).filter(n => n < 24).length;
-      return approved(m) && m.chart && g.status === 'done' && small ? '<div class="small gold-t" style="flex-basis:100%">' + small + (small === 1 ? ' chapter has' : ' chapters have') + ' fewer than 24 questions. A paper draws 12 at random for each attempt, so a larger pool means a retake is not the same paper. ' + act('qgenRetry', m.id + '|more', 'Draft more questions', 'link') + '</div>' : ''; })() +
-    (g.note ? '<div class="small ' + (g.status === 'failed' ? 'warn-t' : 'sub') + '" style="flex-basis:100%">' + esc(g.note) + '</div>' : '');
-};
+/* syllabus documents are reference only: nothing to show about chapters or the chart */
+const chartChip = () => '';
+/* a syllabus document no longer proposes weekly chart topics; only a note when its chapters could not be read */
+const chartPlan = m => m.chartNote ? '<div class="small warn-t">' + esc(m.chartNote) + '</div>' : '';
+/* automatic drafting is switched off; questions drafted earlier stay in the Question bank */
+const qgenChip = () => '';
 /* an update to an approved material, waiting for approval or sent back */
 const updateChip = m => !m.draft ? '' : m.draft.status === 'pending' ? chip('gold', 'Update waiting for approval' + (m.draft.fileId !== m.fileId ? ': new file ' + m.draft.src : '')) : '<div class="small warn-t" style="flex-basis:100%">Update sent back by ' + esc(m.draft.reviewedBy || 'the approver') + ': ' + esc(m.draft.reviewNote || '') + '. The current version is still in use.</div>';
 const readOnly = what => '<section class="card side"><h2>Approval</h2><p class="sub small">The academic content creator adds and edits ' + what + '. You approve each one, or send it back with a note, under Approvals.</p>' + act('nav', 'review', 'Open approvals', 'btn primary') + '</section>';
@@ -56,7 +45,7 @@ export function viewChart() {
   }
   return head + '<section class="card">' + pick + status +
     (loaded ? tbl([[tag], ['Belief'], ['Islamic Laws'], ['Ethics']], Array.from({ length: k.weeks }, (_, i) => { const l = lesson(fake, i + 1); const c = t => /^\[/.test(t) ? '<span class="sub">' + esc(t) + '</span>' : esc(t); return '<tr><th scope="row">' + (i + 1) + '</th><td class="wrapcell">' + c(l.b) + '</td><td class="wrapcell">' + c(l.l) + '</td><td class="wrapcell">' + c(l.e) + '</td></tr>'; })) +
-      (data ? '<p class="sub small">' + (data.sources ? Object.entries(data.sources).map(([sub, s]) => esc(subName(sub)) + ': from the syllabus "' + esc(s.title) + '"' + (s.approvedBy ? ', approved by ' + esc(s.approvedBy) : '') + (s.on ? ' on ' + fd(s.on) : '')).join('. ') + '. Approving a new syllabus for a subject updates its column.' : data.note ? esc(data.note) : 'Written by ' + esc(data.by || 'the academic team') + (data.approvedBy ? ', approved by ' + esc(data.approvedBy) : '') + (data.on ? ' on ' + fd(data.on) : '') + '.') + '</p>' : '<p class="sub small">Bracketed entries stand in for topics the chart does not have yet.</p>')
+      (data ? '<p class="sub small">' + (data.sources ? Object.entries(data.sources).map(([sub, s]) => esc(subName(sub)) + ': from the syllabus "' + esc(s.title) + '"' + (s.approvedBy ? ', approved by ' + esc(s.approvedBy) : '') + (s.on ? ' on ' + fd(s.on) : '')).join('. ') + '. The chart changes only by an Excel upload or Edit this chart, never by uploading a syllabus document.' : data.note ? esc(data.note) : 'Written by ' + esc(data.by || 'the academic team') + (data.approvedBy ? ', approved by ' + esc(data.approvedBy) : '') + (data.on ? ' on ' + fd(data.on) : '') + '.') + '</p>' : '<p class="sub small">Bracketed entries stand in for topics the chart does not have yet.</p>')
       : '<p class="empty">This chart is not filled in yet.</p>') + '</section>';
 }
 

@@ -63,7 +63,7 @@ All sample accounts use the password **`almuntazar123`** (set `SEED_PASSWORD` to
 | `DATABASE_URL` or `POSTGRES_URL` | (none) | A Postgres connection string. When set, records are kept in Postgres instead of the local file. Vercel sets this when you connect Neon. |
 | `DATA_DIR` | `./data` | Where the local database (`academy.db`) and uploaded files are kept when no Postgres is set. Back this folder up. |
 | `BLOB_READ_WRITE_TOKEN` | (none) | When set, uploaded files go to Vercel Blob. Vercel sets this when you connect Blob storage. |
-| `ANTHROPIC_API_KEY` | (none) | Lets Claude draft exam questions from syllabi and suggest tasks from meeting transcripts. Without it, those features say they are not set up. On your computer it can go in a `.env` file. |
+| `ANTHROPIC_API_KEY` | (none) | Lets Claude suggest tasks from meeting transcripts. Without it, that feature says it is not set up. (Questions are no longer drafted automatically; they are uploaded from Excel or added by hand.) On your computer it can go in a `.env` file. |
 | `SEED` | on | Set to `0` to start with an empty database instead of the sample data. |
 | `SEED_PASSWORD` | `almuntazar123` on your computer; **required** on Vercel | Password for the sample accounts. If you change it, sample accounts whose password nobody has changed follow the new value on the next start. |
 | `ADMIN_PASSWORD`, `ADMIN_USERNAME` | (none), `admin` | When set, a super admin account with this username always exists and opens with this password, even if it was changed in the app. Use it to start empty (with `SEED=0`) or to get back in. Remove it once you have your own admin account. |
@@ -89,7 +89,7 @@ Notes:
 - Until Neon is connected, the app still runs, but shows a red notice that changes can be lost.
 - Files uploaded on Vercel can be up to 4 MB. For larger books, upload them to Google Drive and paste the link.
 - Uploaded files are stored at long, unguessable Blob addresses. The app passes a file through to the reading page only for people allowed to see the material, and never shows the address.
-- Add `ANTHROPIC_API_KEY` under Environment Variables for question drafting and transcript tasks. Drafting runs after the syllabus is saved, for up to 5 minutes (`maxDuration` in `vercel.json`); a long syllabus may need **Draft more** to finish its chapters.
+- Add `ANTHROPIC_API_KEY` under Environment Variables for transcript tasks.
 
 ### Docker
 
@@ -131,7 +131,8 @@ test/           server tests
 The academic content creator can upload syllabus charts and multiple-choice questions as Excel (.xlsx) files. Each upload is checked and previewed first, then goes to the approver.
 
 - **Syllabus chart:** on the Syllabus chart page, **Download Excel template** (for the chosen course and semester, filled with the current chart), then **Upload Excel**. Columns are Week, Belief, Islamic Laws and Ethics; any subject left out of the file keeps its current topics. If an SSC already exists for a subject in that semester, the app says who approved it and asks before creating a new one. The current chart stays in use until the new one is approved.
-- **Questions:** in the Question bank, **MCQ Excel template**, then **Upload MCQs (Excel)**. Columns are Course, Semester, Subject, Chapter (optional), Question, Option A to D and Correct answer (A to D, or the option's text). Rows with problems are listed and left out; questions already in the bank are skipped.
+- **Questions:** in the Question bank, **MCQ Excel template**, then **Upload MCQs (Excel)**. Columns are Course, Semester, Subject, Chapter (optional), Question, Option A to D and Correct answer (A to D, or the option's text). The **For** column is *Students* (chapter papers and semester exams) or *Teacher readiness quiz*; a teacher quiz row needs an approved syllabus document for that course, semester and subject, and attaches to it. Rows with problems are listed and left out; questions already in the bank are skipped.
+- **Syllabus documents are reference material only.** Uploading one never changes the syllabus chart and never drafts questions. A document that applies to every semester (for example Akhlaq or Ahkam) can be uploaded once with the semester set to *All*.
 
 ## Not built yet
 

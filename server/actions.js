@@ -17,11 +17,10 @@ export { SAMPLE_PAPER };
 /* kept for the server's start-up call; files are read through files.js */
 export function configure() {}
 
-/* A syllabus for one course, semester and subject, with a PDF or Word file, proposes that subject's weekly
-   topics for the Standard Syllabus Chart; approving the syllabus puts them in the chart. */
 /* questions are drafted when a syllabus gets a new file, or on any save while it has none drafted yet
    (the last drafting failed or never ran); a save that changes nothing else keeps drafts waiting for approval */
-const wantsQuestions = (m, newFile) => !!m.chart && (newFile || !m.qgen || m.qgen.status === 'failed' || (m.qgen.status === 'done' && !m.qgen.made));
+/* automatic drafting is switched off: questions come from the Question bank, by hand or from Excel */
+const wantsQuestions = () => false;
 /* Approving a chapter's newly drafted AI questions retires that chapter's AI questions from an earlier
    drafting of the same syllabus, so a paper never mixes rounds and is never left empty meanwhile.
    Returns how many were retired. */
@@ -35,22 +34,17 @@ function supersede(ctx, q) {
 /* A teacher's guide, once approved (or replaced), is part of its subject's readiness quiz: the quiz of the
    matching syllabus is drafted again. Returns the syllabus to draft for, or null. */
 function guideQuiz(ctx, g) {
+  return null; /* automatic drafting is switched off: teacher quiz questions are uploaded from Excel */
   if (g.type !== 'Teacher guide' || !g.fileId || !approved(g)) return null;
   const syl = ctx.store.all('materials').find(m => m.type === 'Syllabus' && m.fileId && m.chart && approved(m) && m.course === g.course && m.sem === g.sem && m.sub === g.sub);
   if (!syl || !guidesOf(ctx.store, syl).some(x => x.id === g.id) || (syl.qgen && /queued|running/.test(syl.qgen.status))) return null;
   syl.qgen = { ...(syl.qgen || {}), status: 'queued', part: 'teacher' }; ctx.store.put('materials', syl);
   return syl.id;
 }
+/* Syllabus documents are reference material only: they no longer fill the syllabus chart (uploaded from Excel)
+   or have questions drafted from them (questions are added in the Question bank, by hand or from Excel). */
 function syllabusPlan(ctx, m) {
   delete m.chart; delete m.chartNote;
-  if (m.type !== 'Syllabus' || m.course === 'ALL' || !m.sem || !m.sub || m.sub === 'all' || !m.fileId) return;
-  const f = ctx.store.find('files', m.fileId); const k = ctx.store.find('courses', m.course); if (!f || !k) return;
-  try {
-    const { chapters, reason } = chaptersOf(fileBytes(f), f.name);
-    if (!chapters.length) { m.chartNote = reason + ' Fill in the chart by hand with Edit this chart.'; return; }
-    const plan = planDetailed(chapters, k.weeks);
-    m.chart = { sub: m.sub, weeks: plan.map(w => w.text), map: plan.map(w => w.chapters), chapters: chapters.length };
-  } catch { m.chartNote = 'The syllabus file could not be read for the chart. Fill in the chart by hand with Edit this chart.'; }
 }
 
 export class UserError extends Error { constructor(msg, status) { super(msg); this.status = status || 400; } }
@@ -64,6 +58,14 @@ const QTYPES = ['single', 'combo', 'fill', 'match', 'ayah'];
    approves or sends back. Anything added or edited waits for approval before teachers and students see it. */
 const MAKER = ['acmaker'];
 const CHECKER = ['academic', 'super'];
+/* The approved syllabus a teacher readiness quiz belongs to: for that course, subject and semester, or one
+   uploaded for all semesters. Teacher quiz questions uploaded from Excel are attached to it. */
+export const quizSyllabus = (store, co, sem, sub) => {
+  /* the newest approved syllabus wins when there are several */
+  const list = store.all('materials').filter(m => m.type === 'Syllabus' && approved(m) && m.course === co && m.sub === sub).reverse()
+    .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+  return list.find(m => m.sem === sem) || list.find(m => !m.sem) || null;
+};
 /* a subject's display name, e.g. b -> Belief */
 const subName = (ctx, key) => { const x = ctx.store.find('subjects', key); return x ? x.name : key; };
 const submitted = (ctx, x) => Object.assign(x, { status: 'pending', submittedBy: ctx.user.name, submittedById: ctx.user.id, submittedOn: ctx.today, reviewNote: '' });
@@ -359,24 +361,13 @@ function reviewUpdate(ctx, m, a) {
   delete m.chart; delete m.chartNote; Object.assign(m, fields, { status: 'approved', reviewedBy: ctx.user.name, reviewedOn: ctx.today, updatedBy: submittedBy, submittedById, submittedBy, reviewNote: '' }); delete m.draft;
   const ask = wantsQuestions(m, newFile); if (ask) m.qgen = { status: 'queued' };
   ctx.store.put('materials', m);
-  const chart = m.chart && m.type === 'Syllabus' ? ' ' + chartFromSyllabus(ctx, m) : '';
   const g = newFile ? guideQuiz(ctx, m) : null;
-  return { toast: 'Update approved. Teachers and students see the new version on their next read.' + chart + (ask ? ' Questions are being drafted from the syllabus.' : '') + (g ? ' The teacher readiness quiz is being drafted again to include the new guide.' : ''), draft: ask ? m.id : g };
+  return { toast: 'Update approved. Teachers and students see the new version on their next read.' + (ask ? ' Questions are being drafted from the syllabus.' : '') + (g ? ' The teacher readiness quiz is being drafted again to include the new guide.' : ''), draft: ask ? m.id : g };
 }
 
 /* An approved syllabus fills its subject's column of the chart for its course and semester; the other
    subjects' columns are kept. */
-function chartFromSyllabus(ctx, m) {
-  const k = ctx.store.find('courses', m.course); const key = m.course + '-' + m.sem; const all = { ...ctx.store.get('chartData', {}) };
-  const blank = () => Array.from({ length: k ? k.weeks : m.chart.weeks.length }, () => '');
-  const cur = all[key] || { b: blank(), l: blank(), e: blank() };
-  const next = { b: cur.b || blank(), l: cur.l || blank(), e: cur.e || blank(), sources: { ...(cur.sources || {}), [m.chart.sub]: { title: m.title, by: m.submittedBy, approvedBy: ctx.user.name, on: ctx.today } }, maps: { ...(cur.maps || {}), [m.chart.sub]: m.chart.map || [] }, on: ctx.today };
-  next[m.chart.sub] = blank().map((_, i) => m.chart.weeks[i] || '');
-  all[key] = next; ctx.store.set('chartData', all);
-  ctx.store.set('charts', { ...ctx.store.get('charts', {}), [key]: true });
-  const subj = ctx.store.find('subjects', m.chart.sub);
-  return 'The ' + (subj ? subj.name : m.chart.sub) + ' column of the ' + (k ? k.name : m.course) + ' Semester ' + m.sem + ' syllabus chart now follows this syllabus.';
-}
+
 
 /* Approves or sends back a syllabus chart draft; approval makes it the live chart for that course-semester. */
 function reviewChart(ctx, a) {
@@ -881,7 +872,6 @@ export const ACTIONS = {
     ctx.store.put(coll, x);
     if (ok && coll === 'questions') supersede(ctx, x);
     if (ok && coll === 'promotions') return { toast: applyTeachingLevel(ctx, x) };
-    if (ok && coll === 'materials' && x.chart && x.type === 'Syllabus') return { toast: 'Approved. ' + chartFromSyllabus(ctx, x) };
     if (ok && coll === 'materials' && x.type === 'Teacher guide') { const d = guideQuiz(ctx, x); return { toast: 'Approved.' + (d ? ' The teacher readiness quiz for this subject is being drafted again to include this guide.' : ''), draft: d }; }
     if (ok && coll === 'trainings') {
       const inv = ctx.store.all('teachers').filter(t => invited(ctx.store, t.id, x));
@@ -978,19 +968,22 @@ export const ACTIONS = {
   /* Multiple-choice questions from an Excel file: each row checked again here; questions already in the bank skipped. */
   qImportRows: { roles: MAKER, run(ctx, a) {
     const items = (Array.isArray(a.items) ? a.items : []).slice(0, 2000); need(items.length, 'No questions to import.');
-    const key = q => [q.course, q.sem, q.sub, String(q.text).toLowerCase().replace(/\s+/g, ' ').trim()].join('|');
+    const key = q => [q.aud || '', q.course, q.sem, q.sub, String(q.text).toLowerCase().replace(/\s+/g, ' ').trim()].join('|');
     const seen = new Set(ctx.store.all('questions').filter(q => !q.retired && q.text).map(key));
     let added = 0, skipped = 0;
     items.forEach((x, i) => {
       const k = ctx.store.find('courses', str(x && x.course)); need(k, 'Row ' + (i + 1) + ': unknown course.');
       const sem = int(x.sem, 1, k.sems, 0); need(sem, 'Row ' + (i + 1) + ': unknown semester.');
       const sub = ctx.store.find('subjects', str(x.sub)); need(sub && sub.exam, 'Row ' + (i + 1) + ': choose an examined subject.');
-      const q = { course: k.code, sem, sub: sub.key, text: str(x.text, 2000), options: (Array.isArray(x.options) ? x.options : []).slice(0, 4).map(o => str(o, 500)), correct: int(x.correct, 0, 3, -1) };
+      const q = { course: k.code, sem, sub: sub.key, text: str(x.text, 2000), options: (Array.isArray(x.options) ? x.options : []).slice(0, 4).map(o => str(o, 500)), correct: int(x.correct, 0, 3, -1), ...(x.aud === 'teacher' ? { aud: 'teacher' } : {}) };
       need(q.text && q.options.length === 4 && q.options.every(Boolean) && q.correct >= 0, 'Row ' + (i + 1) + ' needs its question, four options and the correct answer.');
       if (seen.has(key(q))) { skipped++; return; }
       seen.add(key(q));
-      const chapter = x.chapter ? int(x.chapter, 1, 60, 0) : 0;
-      ctx.store.put('questions', submitted(ctx, { id: uid('q'), ...q, type: 'single', retired: false, ...(chapter ? { chapter } : {}), source: 'excel' }));
+      /* a teacher readiness quiz question belongs to the approved syllabus of its course, semester and subject */
+      const syl = q.aud === 'teacher' ? quizSyllabus(ctx.store, k.code, sem, sub.key) : null;
+      need(q.aud !== 'teacher' || syl, 'Row ' + (i + 1) + ': there is no approved syllabus for ' + k.name + ' Semester ' + sem + ' ' + sub.name + ' to hold its teacher readiness quiz. Upload and approve the syllabus first.');
+      const chapter = x.chapter && !q.aud ? int(x.chapter, 1, 60, 0) : 0;
+      ctx.store.put('questions', submitted(ctx, { id: uid('q'), ...q, type: 'single', retired: false, ...(chapter ? { chapter } : {}), source: syl ? syl.id : 'excel', ...(syl ? { from: 'excel' } : {}) }));
       added++;
     });
     need(added, skipped ? 'Every question in the file is already in the bank.' : 'No questions to import.');
@@ -1007,7 +1000,7 @@ export const ACTIONS = {
     if (a.fileId) { const f = ctx.store.find('files', str(a.fileId)); need(f, 'The uploaded file was not found.'); fileId = f.id; src = f.name; }
     const m = submitted(ctx, { id: uid('m'), title, type: MTYPES.includes(a.type) ? a.type : 'Other', course: co, sem: co === 'ALL' ? 0 : int(a.sem, 0, 10, 0), sub: str(a.sub, 10) || 'all', week: a.week ? int(a.week, 1, 60, null) : null, pages: a.pages ? int(a.pages, 1, 100000, null) : null, share: a.share === true || a.share === 'true', src: src || 'No file attached', fileId, date: ctx.today });
     syllabusPlan(ctx, m); if (m.chart) m.qgen = { status: 'queued' }; ctx.store.put('materials', m);
-    return { toast: 'Added and sent for approval. Teachers see it once it is approved.' + (m.chart ? ' ' + m.chart.chapters + ' chapters were read for the syllabus chart; they go into the chart when the syllabus is approved. Questions are being drafted for each chapter.' : m.chartNote ? ' ' + m.chartNote : ''), draft: m.chart ? m.id : null };
+    return { toast: 'Added and sent for approval. Teachers see it once it is approved.' + (m.chart ? ' ' + m.chart.chapters + ' chapters were read; questions are being drafted for each chapter. The syllabus chart is not changed: upload it as Excel on the Syllabus chart page.' : m.chartNote ? ' ' + m.chartNote : ''), draft: m.chart ? m.id : null };
   } },
   trainAdd: { roles: MAKER, run(ctx, a) {
     const title = str(a.title, 300); need(title, 'Enter a title.'); need(isIsoDate(a.date), 'Enter a date.');
@@ -1303,20 +1296,20 @@ export const ACTIONS = {
       Object.assign(m, { status: 'approved', editedBy: ctx.user.name, editedOn: ctx.today, reviewNote: '' }); if (replaced) m.date = ctx.today;
       const ask = wantsQuestions(m, replaced); if (ask) m.qgen = { status: 'queued' };
       ctx.store.put('materials', m);
-      const chart = m.chart && m.type === 'Syllabus' ? ' ' + chartFromSyllabus(ctx, m) : '';
       const g = replaced ? guideQuiz(ctx, m) : null;
-      return { toast: title + ' saved. Teachers and students see it on their next read.' + chart + (ask ? ' Questions are being drafted from the syllabus.' : '') + (g ? ' The teacher readiness quiz is being drafted again to include the new guide.' : ''), draft: ask ? m.id : g };
+      return { toast: title + ' saved. Teachers and students see it on their next read.' + (ask ? ' Questions are being drafted from the syllabus.' : '') + (g ? ' The teacher readiness quiz is being drafted again to include the new guide.' : ''), draft: ask ? m.id : g };
     }
     if (approved(m)) {
       const d = submitted(ctx, { ...next, date: replaced ? ctx.today : m.date }); syllabusPlan(ctx, d);
       m.draft = d; ctx.store.put('materials', m);
-      return { toast: 'Update sent for approval. Everyone keeps seeing the current version until it is approved.' + (d.chart ? ' ' + d.chart.chapters + ' chapters were read for the syllabus chart.' : d.chartNote ? ' ' + d.chartNote : '') + (wantsQuestions({ ...m, chart: d.chart }, replaced) ? ' Questions are drafted once the update is approved.' : '') };
+      return { toast: 'Update sent for approval. Everyone keeps seeing the current version until it is approved.' + (d.chart ? ' ' + d.chart.chapters + ' chapters were read for drafting questions.' : d.chartNote ? ' ' + d.chartNote : '') + (wantsQuestions({ ...m, chart: d.chart }, replaced) ? ' Questions are drafted once the update is approved.' : '') };
     }
     Object.assign(m, next); if (replaced) m.date = ctx.today; syllabusPlan(ctx, m); const ask = wantsQuestions(m, replaced); if (ask) m.qgen = { status: 'queued' }; submitted(ctx, m); ctx.store.put('materials', m);
     return { toast: title + ' saved and sent for approval. Teachers see it once it is approved.' + (ask ? ' Questions are being drafted from the syllabus.' : ''), draft: ask ? m.id : null };
   } },
   /* drafts the syllabus's questions again (after adding an API key, or to replace drafts nobody approved) */
   qgenRetry: { roles: [...MAKER, ...CHECKER], run(ctx, a) {
+    need(false, 'Automatic drafting is switched off. Add questions in the Question bank, by hand or with Upload MCQs (Excel).');
     const m = ctx.store.find('materials', str(a.id)); need(m, 'Material not found.', 404);
     need(m.type === 'Syllabus' && m.fileId, 'Questions are drafted from syllabus files only.');
     /* part: 'teacher' (only the teacher quiz) or 'more' (top up each chapter's pool to 24, keeping its questions) */

@@ -1120,28 +1120,24 @@ test('material files are shown inside the app, not downloaded, and Word files ca
   assert.equal((await fetch(base + '/files/' + up.id, { headers: { cookie: await cookie('zainab') } })).status, 403, 'not shared with that student');
 });
 
-test('an approved syllabus fills its subject\'s column of the syllabus chart', async () => {
+test('a syllabus document is reference material: it never changes the syllabus chart or drafts questions', async () => {
   const cookie = async u => (await fetch(base + '/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: u, password: PW }) })).headers.get('set-cookie').split(';')[0];
-  const doc = makeDocx([['Chapter 1', 'b'], ['The Oneness of Allah', ''], ['Text of chapter one.', ''], ['Chapter 2', 'b'], ['Justice of Allah', ''], ['Text.', ''], ['Chapter 3', 'b'], ['Prophethood', ''], ['Text.', '']]);
+  const doc = makeDocx([['Chapter 1', 'b'], ['The Oneness of Allah', ''], ['Text of chapter one.', ''], ['Chapter 2', 'b'], ['Justice of Allah', ''], ['Text.', '']]);
   const up = await (await fetch(base + '/api/upload', { method: 'POST', headers: { cookie: await cookie('rubab'), 'X-Filename': 'Laws syllabus.docx', 'Content-Type': 'application/octet-stream' }, body: doc })).json();
   const mk = await login('rubab'), ap = await login('tahera');
-  const r = await mk.act('matAdd', { title: 'Basic Semester 3 syllabus: Islamic Laws', type: 'Syllabus', course: 'BAS', sem: 3, sub: 'l', share: 'true', fileId: up.id });
-  assert.equal(r.status, 200); assert.match(r.body.toast, /3 chapters were read/);
-  const m = store.all('materials').find(x => x.title === 'Basic Semester 3 syllabus: Islamic Laws');
-  assert.equal(m.chart.sub, 'l'); assert.equal(m.chart.weeks.length, 8, 'one topic per session of Basic');
-  assert.match(m.chart.weeks[0], /^The Oneness of Allah/); assert.match(m.chart.weeks[7], /^Revision of chapters 1 to 3/);
-  assert.ok(!(store.get('chartData', {})['BAS-3']), 'not in the chart until approved');
-  // the Belief column already there is kept
   store.tx(() => store.set('chartData', { ...store.get('chartData', {}), 'BAS-3': { b: Array.from({ length: 8 }, (_, i) => 'Nabuwwat week ' + (i + 1)), l: [], e: [] } }));
+  const r = await mk.act('matAdd', { title: 'Basic Semester 3 syllabus: Islamic Laws', type: 'Syllabus', course: 'BAS', sem: 3, sub: 'l', share: 'true', fileId: up.id });
+  assert.equal(r.status, 200); assert.doesNotMatch(r.body.toast, /chapters were read|drafted/);
+  const m = store.all('materials').find(x => x.title === 'Basic Semester 3 syllabus: Islamic Laws');
+  assert.equal(m.chart, undefined); assert.equal(m.qgen, undefined, 'no questions are drafted');
   assert.equal((await ap.act('review', { kind: 'mat', id: m.id, decision: 'approve' })).status, 200);
   const ch = store.get('chartData')['BAS-3'];
-  assert.equal(ch.l.length, 8); assert.match(ch.l[0], /^The Oneness of Allah/);
-  assert.equal(ch.b[0], 'Nabuwwat week 1', 'other subjects untouched');
-  assert.equal(ch.sources.l.title, m.title);
-  // a syllabus without chapters is still saved, with a note
-  const plain = await (await fetch(base + '/api/upload', { method: 'POST', headers: { cookie: await cookie('rubab'), 'X-Filename': 'notes.docx', 'Content-Type': 'application/octet-stream' }, body: makeDocx([['Just some notes', '']]) })).json();
-  const r2 = await mk.act('matAdd', { title: 'Notes', type: 'Syllabus', course: 'BAS', sem: 3, sub: 'e', share: 'true', fileId: plain.id });
-  assert.equal(r2.status, 200); assert.match(r2.body.toast, /No chapters were found/);
+  assert.deepEqual(ch.l, [], 'the Islamic Laws column is untouched'); assert.equal(ch.b[0], 'Nabuwwat week 1');
+  /* an Akhlaq or Ahkam document that applies to every semester is uploaded once, for all semesters */
+  const all = await mk.act('matAdd', { title: 'Akhlaq for every semester', type: 'Syllabus', course: 'BAS', sem: 0, sub: 'e', share: 'true', fileId: up.id });
+  assert.equal(all.status, 200); assert.equal(store.all('materials').find(x => x.title === 'Akhlaq for every semester').sem, 0);
+  /* drafting cannot be started by hand either */
+  assert.equal((await mk.act('qgenRetry', { id: m.id, part: 'teacher' })).status, 400);
 });
 
 test('a shared material gets a new file; students keep the old one until the update is approved', async () => {
@@ -1167,7 +1163,7 @@ test('a shared material gets a new file; students keep the old one until the upd
   assert.equal((await seen()).draft, undefined, 'students do not receive the update');
   assert.equal((await fetch(base + '/files/' + f2, { headers: { cookie: await cookie('inrstudent') } })).status, 403, 'nor can they open the new file yet');
   assert.equal((await mk.act('review', { kind: 'mat', id: m.id, decision: 'approve' })).status, 403);
-  // sent back: old file stays; then resubmitted and approved: everyone gets the new file and the chart follows
+  // sent back: old file stays; then resubmitted and approved: everyone gets the new file
   assert.equal((await ap.act('review', { kind: 'mat', id: m.id, decision: 'reject', note: 'Wrong file' })).status, 200);
   assert.equal(store.find('materials', m.id).fileId, f1); assert.equal(store.find('materials', m.id).draft.status, 'rejected');
   await mk.act('matEdit', { id: m.id, title: 'Shared syllabus v2', type: 'Syllabus', course: 'INR', sem: 1, sub: 'b', share: 'true', fileId: f2 });
@@ -1175,7 +1171,7 @@ test('a shared material gets a new file; students keep the old one until the upd
   assert.equal(ok.status, 200); assert.match(ok.body.toast, /new version on their next read/);
   assert.equal((await seen()).fileId, f2); assert.equal((await seen()).title, 'Shared syllabus v2');
   assert.equal((await fetch(base + '/files/' + f2, { headers: { cookie: await cookie('inrstudent') } })).status, 200, 'the new file opens for the class');
-  assert.match(store.get('chartData')['INR-1'].b[0], /^New beginning/, 'the chart column follows the new syllabus');
+  assert.ok(!((store.get('chartData')['INR-1'] || {}).b || []).some(t => /New beginning/.test(t)), 'the chart does not follow the syllabus');
 
   // the approver's own edit takes effect at once
   const f3 = await upload('tahera', 'third.docx', makeDocx([['Third version', '']]));
@@ -1184,33 +1180,22 @@ test('a shared material gets a new file; students keep the old one until the upd
   assert.equal((await (await login('maryam')).act('matEdit', { id: m.id, title: 'X' })).status, 403, 'teachers cannot edit');
 });
 
-test('a Belief syllabus drafts a paper per chapter; papers open as the class finishes each chapter and count half the mark', async () => {
+test('chapter papers come from uploaded questions; papers open as the class finishes each chapter and count half the mark', async () => {
   const cookie = async u => (await fetch(base + '/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: u, password: u === 'chstudent' ? 'password123' : PW }) })).headers.get('set-cookie').split(';')[0];
   const body = t => 'This chapter explains ' + t + '. ' + 'It gives reasons, narrations and examples for students to think about. '.repeat(6);
   const doc = makeDocx([['Chapter 1', 'b'], ['The Oneness of Allah', ''], [body('the oneness of Allah'), ''], ['Chapter 2', 'b'], ['Divine Justice', ''], [body('divine justice'), ''], ['Chapter 3', 'b'], ['Prophethood', ''], [body('prophethood'), '']]);
   const fileId = (await (await fetch(base + '/api/upload', { method: 'POST', headers: { cookie: await cookie('rubab'), 'X-Filename': 'Belief sem 4.docx', 'Content-Type': 'application/octet-stream' }, body: doc })).json()).id;
   const mk = await login('rubab'), ap = await login('tahera'), lr = await login('jafar');
-  const r = await mk.act('matAdd', { title: 'Basic Semester 4 syllabus: Belief', type: 'Syllabus', course: 'BAS', sem: 4, sub: 'b', share: 'true', fileId });
-  assert.match(r.body.toast, /Questions are being drafted/);
+  await mk.act('matAdd', { title: 'Basic Semester 4 syllabus: Belief', type: 'Syllabus', course: 'BAS', sem: 4, sub: 'b', share: 'true', fileId });
   const m = store.all('materials').find(x => x.title === 'Basic Semester 4 syllabus: Belief');
-  for (let i = 0; i < 100 && !/done|failed/.test((store.find('materials', m.id).qgen || {}).status); i++) await new Promise(res => setTimeout(res, 20));
-  assert.equal(store.find('materials', m.id).qgen.status, 'done');
-  assert.deepEqual(asked.filter(a => a.course === 'Basic' && a.sem === 4 && !a.teacher).map(a => a.n), [1, 2, 3], 'one request per chapter, with its text');
-  assert.ok(asked.find(a => a.n === 1 && a.sem === 4).text.includes('oneness of Allah'));
-  const tq = asked.find(a => a.teacher && a.sem === 4); assert.ok(tq && tq.text.includes('prophethood'), 'one more request for the teachers\' quiz, with the whole syllabus');
-  assert.equal(store.all('questions').filter(q => q.source === m.id && q.aud === 'teacher').length, 12, 'the teacher quiz is kept apart (two broken ones dropped)');
-  const drafted = store.all('questions').filter(q => q.source === m.id && !q.aud);
-  assert.equal(drafted.length, 36, '12 per chapter; the broken one is dropped');
-  assert.ok(drafted.every(q => q.status === 'pending' && q.ai && q.course === 'BAS' && q.sem === 4 && q.sub === 'b'));
-  // only questions grounded in the chapter text are kept, with what they test and the passage that settles them
-  assert.ok(!drafted.some(q => /ungrounded|longest/.test(q.text)), 'evidence not in the text, or a right answer standing out, is left out');
-  assert.ok(drafted.every(q => q.evidence)); assert.equal(drafted.find(q => q.type === 'single').point, 'point 1');
-  assert.match(store.find('materials', m.id).qgen.note, /1 not found in the text, 1 with an answer that stood out/);
-  const cq = drafted.find(q => q.type === 'combo' && /which are true/.test(q.text)); assert.equal(cq.text, 'Ch1: which are true?'); assert.deepEqual(cq.stmts, ['One', 'Two', 'Three'], 'statements are listed once');
-  assert.deepEqual([...new Set(drafted.map(q => q.chapter))], [1, 2, 3]);
-  // the approver approves the syllabus (chart) and each paper as a whole
   assert.equal((await ap.act('review', { kind: 'mat', id: m.id, decision: 'approve' })).status, 200);
-  assert.deepEqual(store.get('chartData')['BAS-4'].maps.b, [[1], [1], [1], [2], [2], [3], [3], []]);
+  assert.equal(store.all('questions').filter(q => q.source === m.id).length, 0, 'nothing is drafted from the document');
+  // the content creator uploads 12 questions per chapter (as the MCQ Excel upload sends them)
+  const items = [1, 2, 3].flatMap(n => Array.from({ length: 12 }, (_, i) => ({ course: 'BAS', sem: 4, sub: 'b', chapter: n, text: 'Chapter ' + n + ' question ' + (i + 1), options: ['w', 'x', 'y', 'z'], correct: i % 4 })));
+  const imp = await mk.act('qImportRows', { items });
+  assert.equal(imp.status, 200); assert.match(imp.body.toast, /36 questions imported/);
+  const drafted = store.all('questions').filter(q => q.course === 'BAS' && q.sem === 4 && q.sub === 'b' && q.chapter);
+  assert.equal(drafted.length, 36); assert.ok(drafted.every(q => q.status === 'pending'));
   for (const n of [1, 2, 3]) assert.equal((await ap.act('reviewMany', { ids: drafted.filter(q => q.chapter === n).map(q => q.id), decision: 'approve' })).status, 200);
   assert.equal((await mk.act('reviewMany', { ids: [drafted[0].id], decision: 'approve' })).status, 403);
 
@@ -1270,17 +1255,23 @@ test('a teacher goes through the subject\'s training (syllabus and teacher\'s gu
   assert.ok(r, 'the teacher of the Basic Semester 4 class must be ready for its syllabus');
   assert.equal(r.ready, false); assert.equal(r.items.length, 1); assert.equal(r.items[0].read, 0); assert.ok(r.items[0].units >= 1);
   assert.ok((await lr.get('/api/data')).body.data.readiness.some(x => x.mid === m.id && !x.ready), 'the location responsible sees it');
-  // a teacher's guide for the subject joins the training, and the teacher quiz is drafted again to include it
+  // a teacher's guide for the subject joins the training
   const cookie = (await fetch(base + '/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: 'rubab', password: PW }) })).headers.get('set-cookie').split(';')[0];
   const guideDoc = makeDocx([['Teaching the Oneness of Allah', 'b'], ['Begin the class with the story of Prophet Ibrahim and the stars, then ask the students what a true Lord must be like. '.repeat(4), '']]);
   const gid = (await (await fetch(base + '/api/upload', { method: 'POST', headers: { cookie, 'X-Filename': 'Belief sem 4 teacher guide.docx', 'Content-Type': 'application/octet-stream' }, body: guideDoc })).json()).id;
   await mk.act('matAdd', { title: 'Teacher guide: Belief, Basic Semester 4', type: 'Teacher guide', course: 'BAS', sem: 4, sub: 'b', share: 'false', fileId: gid });
   const g = store.all('materials').find(x => x.title === 'Teacher guide: Belief, Basic Semester 4');
   const ok1 = await ap.act('review', { kind: 'mat', id: g.id, decision: 'approve' });
-  assert.match(ok1.body.toast, /drafted again to include this guide/);
-  for (let i = 0; i < 100 && !/done|failed/.test(store.find('materials', m.id).qgen.status); i++) await new Promise(res => setTimeout(res, 20));
-  const ask = asked.filter(a => a.teacher && a.sem === 4).pop(); assert.ok(ask.guide.includes('Prophet Ibrahim and the stars'), 'the quiz is drafted from the guide too');
-  assert.ok(store.all('questions').some(q => q.source === m.id && q.aud === 'teacher' && q.status === 'pending' && q.basis === 'guide'), 'questions from the guide are marked');
+  assert.equal(ok1.status, 200); assert.doesNotMatch(ok1.body.toast, /drafted/);
+  // the content creator uploads the teacher quiz from Excel ("For: Teacher readiness quiz"); it attaches to the approved syllabus
+  const tItems = Array.from({ length: 12 }, (_, i) => ({ course: 'BAS', sem: 4, sub: 'b', chapter: 2, aud: 'teacher', text: 'Teacher readiness question ' + (i + 1), options: ['p', 'q', 'r', 's'], correct: i % 4 }));
+  const ti = await mk.act('qImportRows', { items: tItems });
+  assert.equal(ti.status, 200);
+  const tq = store.all('questions').filter(q => q.aud === 'teacher' && /^Teacher readiness question/.test(q.text));
+  assert.equal(tq.length, 12); assert.ok(tq.every(q => q.source === m.id && q.status === 'pending' && !q.chapter), 'attached to the syllabus, never a chapter paper');
+  // a teacher quiz needs an approved syllabus for its course, semester and subject
+  const none = await mk.act('qImportRows', { items: [{ course: 'BAS', sem: 5, sub: 'l', aud: 'teacher', text: 'Orphan teacher question', options: ['a', 'b', 'c', 'd'], correct: 0 }] });
+  assert.equal(none.status, 400); assert.match(none.body.error, /no approved syllabus/);
   r = await mine(); assert.deepEqual(r.items.map(i => i.mid), [m.id, g.id], 'the syllabus, then the guide');
   assert.equal((await t.act('tquizStart', { mid: m.id })).status, 400, 'the training comes first');
   // the reader reports time per page; short visits do not count, and each report is capped
@@ -1313,37 +1304,13 @@ test('a teacher goes through the subject\'s training (syllabus and teacher\'s gu
   assert.equal((await t.act('tquizSubmit', { attemptId: a2.id, ans })).status, 400, 'one submission per attempt');
 });
 
-test('without an API key, drafting says it is not set up instead of failing silently', async () => {
-  const { draftQuestions } = await import('../server/qgen.js');
+test('saving a syllabus again drafts nothing, and drafting cannot be asked for', async () => {
   const m = store.all('materials').find(x => x.title === 'Basic Semester 4 syllabus: Belief');
-  await draftQuestions(store, m.id, async () => { throw new Error('Could not resolve authentication method. Expected either apiKey or authToken to be set.'); });
-  assert.equal(store.find('materials', m.id).qgen.status, 'failed');
-  assert.match(store.find('materials', m.id).qgen.note, /not set up/);
-  assert.equal(store.all('questions').filter(q => q.source === m.id && !q.aud && q.status === 'approved').length, 36, 'approved questions are kept');
-  // saving the syllabus again, without a new file, drafts the questions that failed
-  const ap = await login('tahera');
+  const ap = await login('tahera'); const before = store.all('questions').length;
   const r = await ap.act('matEdit', { id: m.id, title: m.title, type: 'Syllabus', course: 'BAS', sem: 4, sub: 'b', share: 'true' });
-  assert.match(r.body.toast, /Questions are being drafted/);
-  for (let i = 0; i < 100 && !/done|failed/.test(store.find('materials', m.id).qgen.status); i++) await new Promise(res => setTimeout(res, 20));
-  assert.equal(store.find('materials', m.id).qgen.status, 'done');
-  assert.equal(store.all('questions').filter(q => q.source === m.id && !q.aud && q.status === 'pending').length, 36, 'new drafts wait for approval');
-  assert.ok(!store.all('questions').some(q => q.source === m.id && /according to/i.test(q.text)), 'questions pointing at the document are dropped');
-  // approving chapter 1's new paper retires chapter 1's earlier questions only
-  const live = ch => store.all('questions').filter(q => q.source === m.id && q.chapter === ch && !q.retired && q.status === 'approved');
-  const r1 = await ap.act('reviewMany', { ids: store.all('questions').filter(q => q.source === m.id && q.chapter === 1 && q.status === 'pending').map(q => q.id), decision: 'approve' });
-  assert.match(r1.body.toast, /12 questions from the earlier drafting/);
-  assert.equal(live(1).length, 12); assert.ok(live(1).every(q => q.round));
-  assert.equal(live(2).length, 12, 'chapter 2 keeps its earlier paper until the new one is approved');
-  // a chapter pool under 24 is topped up with new questions that join the paper (approving them retires nothing)
-  await ap.act('qgenRetry', { id: m.id, part: 'more' });
-  for (let i = 0; i < 100 && !/done|failed/.test(store.find('materials', m.id).qgen.status); i++) await new Promise(res => setTimeout(res, 20));
-  const top = asked.filter(a => a.sem === 4 && a.count).pop(); assert.equal(top.count, 12); assert.equal(top.avoid.length, 12, 'the existing questions are given so they are not repeated');
-  const extra = store.all('questions').filter(q => q.source === m.id && q.chapter === 1 && q.extra && q.status === 'pending');
-  assert.equal(extra.length, 12); assert.ok(extra.every(q => q.round === live(1)[0].round), 'they join the current paper');
-  const r2 = await ap.act('reviewMany', { ids: extra.map(q => q.id), decision: 'approve' });
-  assert.doesNotMatch(r2.body.toast, /retired/); assert.equal(live(1).length, 24, 'a pool of 24; each paper draws 12 of them');
-  // once drafted, a plain save does not draft again
-  assert.doesNotMatch((await ap.act('matEdit', { id: m.id, title: m.title, type: 'Syllabus', course: 'BAS', sem: 4, sub: 'b', share: 'true' })).body.toast, /drafted/);
+  assert.equal(r.status, 200); assert.doesNotMatch(r.body.toast, /drafted/);
+  for (const part of ['students', 'teacher', 'more']) assert.equal((await ap.act('qgenRetry', { id: m.id, part })).status, 400);
+  assert.equal(store.all('questions').length, before);
 });
 
 test('sample data is shifted to the install date in whole weeks', async () => {

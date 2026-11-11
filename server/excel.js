@@ -99,7 +99,8 @@ export async function readSsc(buf, weeks) {
 const MCQ_COLS = {
   course: ['course', 'course type', 'level'], sem: ['semester', 'sem'], sub: ['subject'], chapter: ['chapter', 'ch'],
   text: ['question', 'question text'], o0: ['option a', 'a'], o1: ['option b', 'b'], o2: ['option c', 'c'], o3: ['option d', 'd'],
-  correct: ['correct answer', 'correct', 'answer', 'correct option', 'key']
+  correct: ['correct answer', 'correct', 'answer', 'correct option', 'key'],
+  aud: ['for', 'audience', 'used for', 'question for']
 };
 
 export async function mcqTemplate(courses, subjects) {
@@ -108,18 +109,18 @@ export async function mcqTemplate(courses, subjects) {
   ws.columns = [
     { header: 'Course', key: 'course', width: 14 }, { header: 'Semester', key: 'sem', width: 10 }, { header: 'Subject', key: 'sub', width: 16 }, { header: 'Chapter', key: 'chapter', width: 9 },
     { header: 'Question', key: 'text', width: 60 }, { header: 'Option A', key: 'o0', width: 28 }, { header: 'Option B', key: 'o1', width: 28 }, { header: 'Option C', key: 'o2', width: 28 }, { header: 'Option D', key: 'o3', width: 28 },
-    { header: 'Correct answer', key: 'correct', width: 15 }
+    { header: 'Correct answer', key: 'correct', width: 15 }, { header: 'For', key: 'aud', width: 24 }
   ];
   const ex = courses.find(c => c.code === 'BAS') || courses[0]; const sub = subjects.find(s => s.key === 'b') || subjects[0];
-  ws.addRow({ course: ex.name, sem: Math.min(2, ex.sems), sub: sub.name, chapter: 1, text: 'Adl refers to which belief?', o0: 'The oneness of God', o1: 'Divine justice', o2: 'Prophethood', o3: 'The Day of Resurrection', correct: 'B' });
-  ws.addRow({ course: ex.name, sem: Math.min(2, ex.sems), sub: sub.name, chapter: '', text: 'Which of these is one of the roots of religion?', o0: 'Salat', o1: 'Sawm', o2: 'Imamat', o3: 'Hajj', correct: 'C' });
+  ws.addRow({ course: ex.name, sem: Math.min(2, ex.sems), sub: sub.name, chapter: 1, text: 'Adl refers to which belief?', o0: 'The oneness of God', o1: 'Divine justice', o2: 'Prophethood', o3: 'The Day of Resurrection', correct: 'B', aud: 'Students' });
+  ws.addRow({ course: ex.name, sem: Math.min(2, ex.sems), sub: sub.name, chapter: '', text: 'Which of these is one of the roots of religion?', o0: 'Salat', o1: 'Sawm', o2: 'Imamat', o3: 'Hajj', correct: 'C', aud: 'Students' });
   ws.getRow(1).eachCell(c => { c.font = { bold: true, color: { argb: CREAM } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: TEAL } }; });
   ws.getRow(1).height = 22;
   [2, 3].forEach(n => ws.getRow(n).eachCell(c => { c.font = { italic: true, color: { argb: 'FF7C5A28' } }; }));
   ws.eachRow((r, n) => { if (n > 1) r.alignment = { wrapText: true, vertical: 'top' }; });
   /* keep entries valid: drop-down lists for course, subject and correct answer */
   const list = (col, values) => { for (let r = 2; r <= 501; r++) ws.getCell(col + r).dataValidation = { type: 'list', allowBlank: true, formulae: ['"' + values.join(',') + '"'] }; };
-  list('A', courses.map(c => c.name)); list('C', subjects.map(s => s.name)); list('J', ['A', 'B', 'C', 'D']);
+  list('A', courses.map(c => c.name)); list('C', subjects.map(s => s.name)); list('J', ['A', 'B', 'C', 'D']); list('K', ['Students', 'Teacher readiness quiz']);
   const info = wb.addWorksheet('Instructions'); info.columns = [{ width: 110 }];
   [
     'Multiple-choice questions for the question bank',
@@ -129,6 +130,7 @@ export async function mcqTemplate(courses, subjects) {
     'Semester: a number. Subject: one of ' + subjects.map(s => s.name).join(', ') + '.',
     'Chapter: optional. A number puts the question in that chapter\'s paper; leave it empty for the semester exam.',
     'Write all four options, and the correct one as A, B, C or D.',
+    'For: Students (the default, also when empty) puts the question in the semester exam or chapter paper. Teacher readiness quiz adds it to the quiz teachers pass before teaching that course, semester and subject; it needs an approved syllabus for them, and Chapter is ignored.',
     'Upload the file in the Question bank. Every row is checked first; the questions go to the approver and are used once approved.',
     'A question already in the bank (same course, semester, subject and wording) is skipped.'
   ].forEach((t, i) => { const r = info.addRow([t]); if (i === 0) r.font = { bold: true, size: 13, color: { argb: TEAL } }; r.alignment = { wrapText: true }; });
@@ -159,6 +161,8 @@ export async function readMcq(buf, courses, subjects, defaults = {}) {
     const cRaw = get(r, 'correct').trim();
     let correct = /^[a-d]$/i.test(cRaw) ? 'abcd'.indexOf(cRaw.toLowerCase()) : /^[1-4]$/.test(cRaw) ? +cRaw - 1 : /^option\s+[a-d]$/i.test(cRaw) ? 'abcd'.indexOf(cRaw.slice(-1).toLowerCase()) : options.findIndex(o => o && norm(o) === norm(cRaw));
     if (!cRaw) errors.push('no correct answer'); else if (correct < 0) errors.push('correct answer "' + cRaw + '" is not A, B, C or D');
-    return { row: r.n, errors, q: errors.length ? { text: qtext } : { course: k.code, sem, sub: sub.key, chapter: chapter || null, text: qtext, options, correct } };
+    const aud = /teacher/i.test(get(r, 'aud')) ? 'teacher' : null;
+    if (get(r, 'aud') && !aud && !/^students?$/i.test(get(r, 'aud').trim())) errors.push('For must be Students or Teacher readiness quiz, not "' + get(r, 'aud') + '"');
+    return { row: r.n, errors, q: errors.length ? { text: qtext } : { course: k.code, sem, sub: sub.key, chapter: aud ? null : chapter || null, text: qtext, options, correct, ...(aud ? { aud } : {}) } };
   });
 }

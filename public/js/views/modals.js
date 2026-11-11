@@ -270,7 +270,7 @@ export function modalHtml() {
   if (m.t === 'mcqImport') {
     /* multiple-choice questions read from Excel, checked row by row */
     const items = m.items; const ok = items.filter(x => !x.errors.length && !x.dupe); const dup = items.filter(x => x.dupe); const bad = items.filter(x => x.errors.length);
-    const where = q => course(q.course).name + ' · Sem ' + q.sem + ' · ' + subName(q.sub) + (q.chapter ? ' · Ch ' + q.chapter : '');
+    const where = q => course(q.course).name + ' · Sem ' + q.sem + ' · ' + subName(q.sub) + (q.aud === 'teacher' ? ' · Teacher readiness quiz' : q.chapter ? ' · Ch ' + q.chapter : '');
     const shown = items.slice(0, 300);
     b = '<h2>Questions from Excel</h2><p class="sub small">' + esc(m.file) + ' · ' + items.length + (items.length === 1 ? ' row' : ' rows') + '</p>' +
       '<div class="btns">' + chip('ok', ok.length + ' ready to import') + (dup.length ? chip('mute', dup.length + ' already in the bank') : '') + (bad.length ? chip('warn', bad.length + ' with problems') : '') + '</div>' +

@@ -11,7 +11,7 @@ import { seed } from './seed.js';
 import { currentUser, createSession, destroySession, verifyPassword, hashPassword } from './auth.js';
 import { configureFiles, loadFile } from './files.js';
 import { snapshot } from './snapshot.js';
-import { runAction, ensureSessions, UserError, SAMPLE_PAPER, configure } from './actions.js';
+import { runAction, ensureSessions, UserError, SAMPLE_PAPER, configure, quizSyllabus } from './actions.js';
 import { describeUser, ACADEMIC_ROLES, rolesOf } from './access.js';
 import { readPaper, PaperError, docxText } from './docx.js';
 import { sscTemplate, readSsc, mcqTemplate, readMcq } from './excel.js';
@@ -277,9 +277,14 @@ export async function createApp(opts = {}) {
     let items; try { items = await readMcq(req.body, req.store.all('courses'), req.store.all('subjects'), { course: req.query.course, sem: req.query.sem, sub: req.query.sub }); } catch (e) { return res.status(400).json({ error: e.message }); }
     if (!items.length) return res.status(400).json({ error: 'No questions found below the heading row.' });
     /* mark questions already in the bank, so the creator sees what will be skipped */
-    const same = (a, b) => a.course === b.course && a.sem === b.sem && a.sub === b.sub && a.text.toLowerCase().replace(/\s+/g, ' ').trim() === b.text.toLowerCase().replace(/\s+/g, ' ').trim();
+    const same = (a, b) => (a.aud || '') === (b.aud || '') && a.course === b.course && a.sem === b.sem && a.sub === b.sub && a.text.toLowerCase().replace(/\s+/g, ' ').trim() === b.text.toLowerCase().replace(/\s+/g, ' ').trim();
     const bank = req.store.all('questions').filter(q => !q.retired && q.text);
-    items.forEach(it => { if (!it.errors.length && bank.some(q => same(q, it.q))) it.dupe = true; });
+    items.forEach(it => {
+      if (it.errors.length) return;
+      /* a teacher readiness quiz question needs the approved syllabus it belongs to */
+      if (it.q.aud === 'teacher' && !quizSyllabus(req.store, it.q.course, it.q.sem, it.q.sub)) { it.errors.push('no approved syllabus for this course, semester and subject to hold its teacher readiness quiz'); return; }
+      if (bank.some(q => same(q, it.q))) it.dupe = true;
+    });
     res.json({ items });
   }));
 
