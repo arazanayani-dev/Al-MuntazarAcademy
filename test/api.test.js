@@ -65,7 +65,10 @@ async function login(username, password = PW) {
     const res = await fetch(base + url, { method, headers: { cookie, 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
     return { status: res.status, body: await res.json().catch(() => null) };
   };
-  return { status: 200, get: url => req('GET', url), act: (name, args) => req('POST', '/api/action/' + name, args || {}) };
+  /* raw: sends a file body, as the browser does for uploads; bytes: fetches a file download */
+  const raw = async (url, buf) => { const res = await fetch(base + url, { method: 'POST', headers: { cookie, 'Content-Type': 'application/octet-stream' }, body: buf }); return { status: res.status, body: await res.json().catch(() => null) }; };
+  const bytes = async url => { const res = await fetch(base + url, { headers: { cookie } }); return { status: res.status, type: res.headers.get('content-type'), buf: Buffer.from(await res.arrayBuffer()) }; };
+  return { status: 200, get: url => req('GET', url), act: (name, args) => req('POST', '/api/action/' + name, args || {}), raw, bytes };
 }
 
 test('the sign-in page is not told about any accounts', async () => {
@@ -1381,4 +1384,70 @@ test('an allocated student records who allocated them and leaves the waiting lis
   assert.equal(s.classId, 'MUM-BAS-003');
   assert.equal(s.allocatedBy, 'Br. Jafar');
   assert.ok(!r.body.data.regs.some(x => x.name === 'Ruqayya Allocated'));
+});
+
+
+/* ---------- Excel uploads by the academic content creator ---------- */
+async function xlsx(rows) {
+  const { default: ExcelJS } = await import('exceljs');
+  const wb = new ExcelJS.Workbook(); const ws = wb.addWorksheet('Sheet1'); rows.forEach(r => ws.addRow(r));
+  return Buffer.from(await wb.xlsx.writeBuffer());
+}
+
+test('a syllabus chart comes in from Excel, asking first when one already exists', async () => {
+  const mk = await login('rubab'), ap = await login('tahera'), lr = await login('jafar');
+  /* the template downloads, filled with the current chart, and reads back */
+  const t = await mk.bytes('/api/excel/ssc-template?course=INT&sem=2');
+  assert.equal(t.status, 200); assert.match(t.type, /spreadsheetml/);
+  /* only the content creator uploads */
+  assert.equal((await lr.raw('/api/excel/ssc-preview?course=INT&sem=2', t.buf)).status, 403);
+  assert.equal((await ap.raw('/api/excel/ssc-preview?course=INT&sem=2', t.buf)).status, 403);
+  /* a fresh chart for Intermediate Semester 2, Belief only: nothing exists, so no question */
+  const file = await xlsx([['Week', 'Belief'], ...Array.from({ length: 13 }, (_, i) => [i + 1, 'Adl topic ' + (i + 1)]), [14, 'beyond the semester']]);
+  const p = (await mk.raw('/api/excel/ssc-preview?course=INT&sem=2', file)).body;
+  assert.deepEqual(p.subjects, ['b']); assert.equal(p.b[0], 'Adl topic 1'); assert.equal(p.l, null);
+  assert.equal(p.approved, null); assert.equal(p.pending, null);
+  assert.equal(p.problems.length, 1, 'week 14 is reported, not imported');
+  assert.equal((await mk.act('chartImport', { key: p.key, b: p.b, l: p.l, e: p.e, file: 'int2.xlsx' })).status, 200);
+  /* the approver approves it: it is now in use */
+  assert.equal((await ap.act('review', { kind: 'chart', id: 'INT-2', decision: 'approve' })).status, 200);
+  /* uploading Belief again finds the chart in use and needs the creator's confirmation */
+  const again = await xlsx([['Week', 'Belief', 'Ethics'], [1, 'New Adl 1', 'Honesty'], [2, 'New Adl 2', '']]);
+  const p2 = (await mk.raw('/api/excel/ssc-preview?course=INT&sem=2', again)).body;
+  assert.deepEqual(p2.subjects, ['b', 'e']); assert.deepEqual(p2.approved.subjects, ['b']); assert.equal(p2.approved.approvedBy, 'Sr. Tahera');
+  const args = { key: p2.key, b: p2.b, l: p2.l, e: p2.e, file: 'int2-new.xlsx' };
+  assert.equal((await mk.act('chartImport', args)).status, 409, 'not without confirming');
+  const ok = await mk.act('chartImport', { ...args, confirmNew: true });
+  assert.equal(ok.status, 200); assert.match(ok.body.toast, /New syllabus chart/);
+  const d = ok.body.data.chartDrafts['INT-2'];
+  assert.equal(d.status, 'pending'); assert.equal(d.b[0], 'New Adl 1'); assert.equal(d.e[0], 'Honesty');
+  /* the live chart is unchanged until approval */
+  assert.equal(ok.body.data.chartData['INT-2'].b[0], 'Adl topic 1');
+});
+
+test('multiple-choice questions come in from Excel, checked row by row', async () => {
+  const mk = await login('rubab');
+  const t = await mk.bytes('/api/excel/mcq-template'); assert.equal(t.status, 200);
+  const file = await xlsx([
+    ['Course', 'Semester', 'Subject', 'Chapter', 'Question', 'Option A', 'Option B', 'Option C', 'Option D', 'Correct answer'],
+    ['Basic', 3, 'Belief', 2, 'Which of these is Nabuwwat, in the uploaded paper?', 'Divine justice', 'Prophethood', 'Oneness', 'Resurrection', 'B'],
+    ['BAS', '3', 'Ethics', '', 'Truthfulness is part of:', 'Akhlaq', 'Fiqh', 'Usul', 'Tafsir', 'akhlaq'],
+    ['Basic', 9, 'Belief', '', 'Bad semester', 'a', 'b', 'c', 'd', 'A'],
+    ['Basic', 3, 'Belief', '', 'Missing option', 'a', '', 'c', 'd', 'E'],
+    ['Basic', 2, 'Belief', '', 'Adl, the subject of this semester, refers to which belief?', 'The oneness of God', 'Divine justice', 'Prophethood', 'The Day of Resurrection', 'B']
+  ]);
+  const { items } = (await mk.raw('/api/excel/mcq-preview', file)).body;
+  assert.equal(items.length, 5);
+  assert.deepEqual(items[0].q, { course: 'BAS', sem: 3, sub: 'b', chapter: 2, text: 'Which of these is Nabuwwat, in the uploaded paper?', options: ['Divine justice', 'Prophethood', 'Oneness', 'Resurrection'], correct: 1 });
+  assert.equal(items[1].q.correct, 0, 'the answer can be given as the option text');
+  assert.match(items[2].errors.join(), /Basic has 5 semesters, not 9/);
+  assert.match(items[3].errors.join(), /option B missing/); assert.match(items[3].errors.join(), /not A, B, C or D/);
+  assert.equal(items[4].dupe, true, 'already in the sample bank');
+  const ready = items.filter(x => !x.errors.length && !x.dupe).map(x => x.q);
+  const r = await mk.act('qImportRows', { items: ready });
+  assert.equal(r.status, 200); assert.match(r.body.toast, /2 questions imported/);
+  const q = r.body.data.questions.find(x => x.text === 'Which of these is Nabuwwat, in the uploaded paper?');
+  assert.equal(q.status, 'pending'); assert.equal(q.chapter, 2); assert.equal(q.correct, 1);
+  /* importing the same file again skips what is now in the bank */
+  assert.equal((await mk.act('qImportRows', { items: ready })).status, 400);
 });

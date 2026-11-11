@@ -3,7 +3,7 @@ import { S, ME, TODAY } from '../state.js';
 import { DOW, DOWL, fd, fdl, ft, pd, addDays } from '/shared/dates.js';
 import { esc, opts, act, chip, tx, stmtList, pct } from '../ui.js';
 import {
-  cls, stu, course, courseLabel, group, classStudents, classSessions, stuStats, statChip, semResult, semReady, moveTargets, ended, levelLabel, assignable, paperCounts, examSubs, nextDate, whenFor, nextCounter, QTYPE, myLoc, myStudent, teacherName, levelRank, teacherTitle
+  cls, stu, course, subName, courseLabel, group, classStudents, classSessions, stuStats, statChip, semResult, semReady, moveTargets, ended, levelLabel, assignable, paperCounts, examSubs, nextDate, whenFor, nextCounter, QTYPE, myLoc, myStudent, teacherName, levelRank, teacherTitle
 } from '../logic.js';
 import { certsFor } from './student.js';
 import { certificateHtml } from './certificate.js';
@@ -248,6 +248,40 @@ export function modalHtml() {
         : '<p class="empty">No student in this class has a certificate yet. Certificates come with published semester results, passed chapter papers and completing the course.</p>') +
       '<div class="btns">' + act('modalClose', '', 'Close', 'btn primary') + '</div>';
   }
+  if (m.t === 'sscImport') {
+    /* a syllabus chart read from Excel: say what already exists, and ask before making a new chart */
+    const p = m.p; const k = course(p.course); const names = list => list.map(subName).join(', '); const tag = p.course === 'INR' ? 'Session' : 'Week';
+    const clash = p.subjects.filter(x => (p.approved && p.approved.subjects.includes(x)) || (p.pending && p.pending.subjects.includes(x)));
+    const where = k.name + ' Semester ' + p.sem;
+    const exists = clash.length
+      ? '<div class="card" style="background:var(--gold-tint);border-color:var(--gold-ink);gap:6px"><div class="b gold-t">An SSC already exists for ' + esc(names(clash)) + ' in ' + esc(where) + '.</div>' +
+        (p.approved ? '<div class="small">In use now' + (p.approved.approvedBy ? ', approved by ' + esc(p.approved.approvedBy) : '') + (p.approved.on ? ' on ' + fd(p.approved.on) : '') + ': ' + esc(names(p.approved.subjects)) + '.</div>' : '') +
+        (p.pending ? '<div class="small">Waiting for approval' + (p.pending.by ? ', from ' + esc(p.pending.by) : '') + (p.pending.on ? ' on ' + fd(p.pending.on) : '') + ': ' + esc(names(p.pending.subjects)) + '. A new upload replaces this draft.</div>' : '') +
+        '<div class="b" style="margin-top:4px">Do you want to create a new SSC for ' + esc(names(clash)) + ' in ' + esc(where) + '?</div><div class="sub small">The current chart stays in use until the new one is approved.' + (p.subjects.length > clash.length ? ' ' + esc(names(p.subjects.filter(x => !clash.includes(x)))) + ' will be added as new.' : '') + '</div></div>'
+      : '<p class="sub">No SSC exists yet for ' + esc(names(p.subjects)) + ' in ' + esc(where) + '. Creating it sends it for approval; teachers see it once it is approved.</p>';
+    const others = ['b', 'l', 'e'].filter(x => !p.subjects.includes(x));
+    b = '<h2>Syllabus chart from Excel</h2><p class="sub small">' + esc(m.file) + ' · ' + esc(where) + ' · ' + p.weeks + ' ' + tag.toLowerCase() + 's</p>' + exists +
+      (p.problems.length ? '<div class="small warn-t">' + p.problems.map(esc).join('<br>') + '</div>' : '') +
+      '<div class="scroll" style="max-height:46vh;overflow:auto">' + '<table><thead><tr><th scope="col">' + tag + '</th>' + p.subjects.map(x => '<th scope="col">' + esc(subName(x)) + '</th>').join('') + '</tr></thead><tbody>' +
+        Array.from({ length: p.weeks }, (_, i) => '<tr><th scope="row">' + (i + 1) + '</th>' + p.subjects.map(x => '<td class="wrapcell">' + (p[x][i] ? esc(p[x][i]) : '<span class="sub">Empty</span>') + '</td>').join('') + '</tr>').join('') + '</tbody></table></div>' +
+      (others.length ? '<p class="sub small">' + esc(names(others)) + ' ' + (others.length === 1 ? 'is' : 'are') + ' not in the file, so ' + (others.length === 1 ? 'its' : 'their') + ' topics stay as they are.</p>' : '') +
+      '<div class="btns">' + (clash.length ? act('sscImportSave', 'new', 'Yes, create a new SSC', 'btn primary') : act('sscImportSave', '', 'Create SSC and send for approval', 'btn primary')) + act('modalClose', '', clash.length ? 'No, keep the current one' : 'Cancel') + '</div>';
+  }
+  if (m.t === 'mcqImport') {
+    /* multiple-choice questions read from Excel, checked row by row */
+    const items = m.items; const ok = items.filter(x => !x.errors.length && !x.dupe); const dup = items.filter(x => x.dupe); const bad = items.filter(x => x.errors.length);
+    const where = q => course(q.course).name + ' · Sem ' + q.sem + ' · ' + subName(q.sub) + (q.chapter ? ' · Ch ' + q.chapter : '');
+    const shown = items.slice(0, 300);
+    b = '<h2>Questions from Excel</h2><p class="sub small">' + esc(m.file) + ' · ' + items.length + (items.length === 1 ? ' row' : ' rows') + '</p>' +
+      '<div class="btns">' + chip('ok', ok.length + ' ready to import') + (dup.length ? chip('mute', dup.length + ' already in the bank') : '') + (bad.length ? chip('warn', bad.length + ' with problems') : '') + '</div>' +
+      (bad.length ? '<p class="small warn-t">Rows with problems are left out. Fix them in the file and upload it again; questions already imported are skipped then.</p>' : '') +
+      '<div class="scroll" style="max-height:48vh;overflow:auto"><table><thead><tr><th scope="col" class="r">Row</th><th scope="col">Question</th><th scope="col">Where</th><th scope="col">Answer</th><th scope="col">Status</th></tr></thead><tbody>' +
+        shown.map(x => '<tr><td class="r">' + x.row + '</td><td class="wrapcell">' + tx(x.q.text || '<no question>') + (x.errors.length ? '<div class="small warn-t">Problem: ' + esc(x.errors.join('; ')) + '</div>' : '') + '</td><td>' + (x.errors.length ? '' : esc(where(x.q))) + '</td><td class="wrapcell">' + (x.errors.length ? '' : 'ABCD'[x.q.correct] + '. ' + esc(x.q.options[x.q.correct]).slice(0, 60)) + '</td><td>' +
+          (x.errors.length ? chip('warn', 'Left out') : x.dupe ? chip('mute', 'Already in bank') : chip('ok', 'Ready')) + '</td></tr>').join('') + '</tbody></table></div>' +
+      (items.length > shown.length ? '<p class="sub small">Showing the first ' + shown.length + ' rows; all ' + ok.length + ' ready questions are imported.</p>' : '') +
+      '<p class="sub small">Imported questions go to the approver and are used in papers once approved.</p>' +
+      '<div class="btns">' + (ok.length ? act('mcqImportSave', '', 'Import ' + ok.length + (ok.length === 1 ? ' question' : ' questions'), 'btn primary') : '') + act('modalClose', '', 'Cancel') + '</div>';
+  }
   if (m.t === 'import') {
     const P = S.paper;
     if (!m.step || !P) b = '<h2>Import a question paper</h2><p>Upload the paper as a Word (.docx) file. Number each question (1. 2. 3.) and put its options on lines starting a) b) c) d); mark each answer in yellow highlight, or in bold. The questions are shown for you to check before anything is saved.</p>' +
@@ -284,5 +318,5 @@ export function modalHtml() {
     const u = S.users.find(x => x.id === m.id);
     b = '<h2>Reset password for ' + esc(u.name) + '</h2><form data-form="userReset" style="display:flex;flex-direction:column;gap:12px"><input type="hidden" name="id" value="' + esc(u.id) + '"><div class="field"><label for="ur-p">New password (8 characters or more)</label><input id="ur-p" name="password" type="password" autocomplete="new-password" minlength="8" required></div><p class="sub small">They will be signed out everywhere and must use the new password.</p><div class="btns"><button class="btn primary" type="submit">Reset password</button>' + act('modalClose', '', 'Cancel') + '</div></form>';
   }
-  return '<div class="overlay" data-act="overlay"><div class="modal' + (m.t === 'cert' ? ' modal-cert' : '') + '" role="dialog" aria-modal="true">' + b + (m.err ? '<p class="err" role="alert">' + esc(m.err) + '</p>' : '') + '</div></div>';
+  return '<div class="overlay" data-act="overlay"><div class="modal' + (m.t === 'cert' ? ' modal-cert' : m.t === 'sscImport' || m.t === 'mcqImport' ? ' modal-wide' : '') + '" role="dialog" aria-modal="true">' + b + (m.err ? '<p class="err" role="alert">' + esc(m.err) + '</p>' : '') + '</div></div>';
 }

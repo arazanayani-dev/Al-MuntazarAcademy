@@ -35,13 +35,16 @@ const readOnly = what => '<section class="card side"><h2>Approval</h2><p class="
 
 /* The Standard Syllabus Chart: each week's Belief, Islamic Laws and Ethics topic for a course and semester.
    The creator edits it; changes go live once approved. */
+const upBtn = (kind, label, attrs, cl) => '<label class="' + (cl || 'btn') + ' upbtn">' + label + '<input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" data-upload="' + kind + '"' + (attrs || '') + ' class="sr"></label>';
+const dlBtn = (href, label) => '<a class="btn" style="display:inline-flex;align-items:center;text-decoration:none" href="' + esc(href) + '" download>' + label + '</a>';
 export function viewChart() {
   const co = S.p.course || 'BAS'; const k = course(co); const sem = Math.min(+(S.p.sem || 2), k.sems); const key = co + '-' + sem;
   const data = (S.chartData || {})[key]; const draft = (S.chartDrafts || {})[key]; const loaded = S.charts[key] || data;
   const fake = { course: co, sem }; const tag = co === 'INR' ? 'Session' : 'Week';
   const editing = maker() && S.p.edit; const src = editing ? S.form.ch : null;
   const head = '<div class="head"><div><h1>Standard Syllabus Chart</h1><div class="sub">The fixed weekly plan teachers log each session against</div></div>' +
-    (maker() && !editing ? '<div class="btns">' + act('chartEdit', key, data || draft ? 'Edit this chart' : 'Fill in this chart', 'btn primary') + '</div>' : '') + '</div>';
+    (maker() && !editing ? '<div class="btns">' + act('chartEdit', key, data || draft ? 'Edit this chart' : 'Fill in this chart', 'btn primary') +
+      dlBtn('/api/excel/ssc-template?course=' + co + '&sem=' + sem, 'Download Excel template') + upBtn('ssc', 'Upload Excel', ' data-course="' + co + '" data-sem="' + sem + '"') + '</div>' : '') + '</div>';
   const pick = '<div class="form"><div class="field"><label for="ch-c">Course type</label><select id="ch-c" data-bind="p.course" data-rerender="1"' + (editing ? ' disabled' : '') + '>' + opts(S.courses.map(c => [c.code, c.name]), co) + '</select></div>' +
     '<div class="field"><label for="ch-s">Semester</label><select id="ch-s" data-bind="p.sem" data-rerender="1"' + (editing ? ' disabled' : '') + '>' + opts(Array.from({ length: k.sems }, (_, i) => [i + 1, 'Semester ' + (i + 1)]), sem) + '</select></div></div>';
   const status = draft ? (draft.status === 'pending' ? '<p class="small gold-t">Changes by ' + esc(draft.submittedBy || 'the creator') + ' are waiting for approval' + (maker() ? '.' : '. ' + act('nav', 'review', 'Review now', 'link')) + '</p>' : '<p class="small warn-t">Changes were sent back by ' + esc(draft.reviewedBy || 'the approver') + ': ' + esc(draft.reviewNote || '') + '</p>') : '';
@@ -85,7 +88,7 @@ export function viewBank() {
   /* teacher readiness quiz questions are listed here too, so they can be edited, but never go into student papers */
   const live = list.filter(q => !q.retired && !q.aud && approved(q)).length; const waiting = list.filter(q => q.status === 'pending').length;
   return '<div class="head"><div><h1>Question bank</h1><div class="sub">Questions of several types, all marked automatically, stored by course type, semester and subject</div></div>' +
-    (maker() ? '<div class="btns">' + act('importOpen', '', 'Import a question paper') + '</div>' : '') + '</div>' +
+    (maker() ? '<div class="btns">' + act('importOpen', '', 'Import a question paper') + dlBtn('/api/excel/mcq-template', 'MCQ Excel template') + upBtn('mcq', 'Upload MCQs (Excel)', ' data-course="' + f.course + '" data-sem="' + f.sem + '" data-sub="' + f.sub + '"', 'btn primary') + '</div>' : '') + '</div>' +
     '<div class="cols"><section class="card main"><div class="form">' +
       '<div class="field"><label for="qb-c">Course type</label><select id="qb-c" data-bind="form.qb.course" data-rerender="1">' + opts(S.courses.map(c => [c.code, c.name]), f.course) + '</select></div>' +
       '<div class="field"><label for="qb-s">Semester</label><select id="qb-s" data-bind="form.qb.sem" data-rerender="1">' + opts(Array.from({ length: k.sems }, (_, i) => [i + 1, 'Semester ' + (i + 1)]), f.sem) + '</select></div>' +

@@ -368,6 +368,8 @@ const A = {
   async callSave() { await call('callSave', S.form); S.modal = null; },
   reminder(sid) { S.modal = { t: 'reminder', sid }; },
   cert(key) { S.modal = { t: 'cert', key }; },
+  async sscImportSave(arg) { const m = S.modal; const p = m.p; await call('chartImport', { key: p.key, b: p.b, l: p.l, e: p.e, confirmNew: arg === 'new', file: m.file }); S.modal = null; },
+  async mcqImportSave() { const items = S.modal.items.filter(x => !x.errors.length && !x.dupe).map(x => x.q); await call('qImportRows', { items }); S.modal = null; },
   certsOpen(cid) { S.modal = { t: 'certs', cid }; },
   certFor(arg) { const [sid, key, cid] = arg.split('::'); S.modal = { t: 'cert', sid, key, cid }; },
   modalClose() { S.modal = null; },
@@ -470,8 +472,25 @@ document.addEventListener('submit', ev => {
   const fn = F[name] || (SERVER_FORMS.includes(name) ? (x => call(name, x)) : null); if (!fn) return;
   runGuarded(() => fn(d), name === 'login');
 });
+/* reads an Excel file on the server and returns what it found, for the creator to check before anything is saved */
+async function excelPreview(kind, file, qs) {
+  if (!/\.xlsx$/i.test(file.name)) throw new ApiError('Choose an Excel file ending in .xlsx. An older .xls file can be opened in Excel and saved as .xlsx.');
+  if (META.maxUpload && file.size > META.maxUpload) throw new ApiError('That file is larger than ' + Math.round(META.maxUpload / 1048576) + ' MB. Split it into smaller files.');
+  const r = await fetch('/api/excel/' + kind + '-preview?' + new URLSearchParams(qs), { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/octet-stream', 'X-Filename': encodeURIComponent(file.name) }, body: file });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new ApiError(j.error || 'The file could not be read.');
+  return j;
+}
 function onInput(ev) {
   const el = ev.target;
+  if (el.dataset && el.dataset.upload && ev.type === 'change' && el.files && el.files[0]) {
+    const file = el.files[0]; const d = el.dataset; el.value = '';
+    runGuarded(async () => {
+      if (d.upload === 'ssc') S.modal = { t: 'sscImport', file: file.name, p: await excelPreview('ssc', file, { course: d.course, sem: d.sem }) };
+      if (d.upload === 'mcq') S.modal = { t: 'mcqImport', file: file.name, items: (await excelPreview('mcq', file, { course: d.course, sem: d.sem, sub: d.sub })).items };
+    });
+    return;
+  }
   if (el.dataset && el.dataset.call === 'setAccess') { if (ev.type === 'change') runGuarded(() => call('setAccess', { tid: el.dataset.tid, access: el.value })); return; }
   if (!el.dataset || !el.dataset.bind) return;
   setPath(el.dataset.bind, el.type === 'checkbox' ? el.checked : el.value);

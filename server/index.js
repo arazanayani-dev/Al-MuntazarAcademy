@@ -14,6 +14,7 @@ import { snapshot } from './snapshot.js';
 import { runAction, ensureSessions, UserError, SAMPLE_PAPER, configure } from './actions.js';
 import { describeUser, ACADEMIC_ROLES, rolesOf } from './access.js';
 import { readPaper, PaperError, docxText } from './docx.js';
+import { sscTemplate, readSsc, mcqTemplate, readMcq } from './excel.js';
 import { draftQuestions } from './qgen.js';
 import { configureReadiness, countUnits } from './readiness.js';
 import Anthropic from '@anthropic-ai/sdk';
@@ -231,6 +232,56 @@ export async function createApp(opts = {}) {
     try { res.json(readPaper(req.body, name)); }
     catch (e) { res.status(400).json({ error: e instanceof PaperError ? e.message : 'The Word file could not be read. Save it again as .docx and try once more.' }); }
   });
+
+  /* ---------- Excel: syllabus charts and multiple-choice questions, for the academic content creator ---------- */
+  const canExcel = req => rolesOf(req.store, req.user).some(r => ['acmaker', 'academic', 'super'].includes(r));
+  const isMaker = req => rolesOf(req.store, req.user).includes('acmaker');
+  const sendXlsx = (res, name, buf) => {
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename="' + name.replace(/[^\w.-]+/g, '-') + '"');
+    res.end(buf);
+  };
+  const courseSem = (req) => {
+    const k = req.store.find('courses', String(req.query.course || '')); const sem = parseInt(req.query.sem, 10);
+    return k && sem >= 1 && sem <= k.sems ? { k, sem, key: k.code + '-' + sem } : null;
+  };
+  /* what already exists for a course-semester chart, per subject: the approved chart and any draft awaiting approval */
+  const chartState = (store, key) => {
+    const has = x => ['b', 'l', 'e'].filter(s => x && Array.isArray(x[s]) && x[s].some(Boolean));
+    const live = (store.get('chartData', {}))[key]; const draft = (store.get('chartDrafts', {}))[key];
+    return {
+      approved: live && has(live).length ? { subjects: has(live), by: live.by || null, approvedBy: live.approvedBy || null, on: live.on || null } : null,
+      pending: draft && draft.status === 'pending' && has(draft).length ? { subjects: has(draft), by: draft.submittedBy || null, on: draft.submittedOn || null } : null
+    };
+  };
+  app.get('/api/excel/ssc-template', auth, h(async (req, res) => {
+    if (!canExcel(req)) return res.status(403).json({ error: 'Not allowed.' });
+    const cs = courseSem(req); if (!cs) return res.status(400).json({ error: 'Choose a course type and semester.' });
+    const live = (req.store.get('chartData', {}))[cs.key];
+    sendXlsx(res, 'SSC-' + cs.k.name + '-Semester-' + cs.sem + '.xlsx', await sscTemplate(cs.k, cs.sem, live));
+  }));
+  app.post('/api/excel/ssc-preview', auth, express.raw({ type: () => true, limit: maxUpload }), h(async (req, res) => {
+    if (!isMaker(req)) return res.status(403).json({ error: 'Only the academic content creator uploads syllabus charts.' });
+    const cs = courseSem(req); if (!cs) return res.status(400).json({ error: 'Choose a course type and semester.' });
+    if (!req.body || !req.body.length) return res.status(400).json({ error: 'The file is empty.' });
+    let data; try { data = await readSsc(req.body, cs.k.weeks); } catch (e) { return res.status(400).json({ error: e.message }); }
+    res.json({ key: cs.key, course: cs.k.code, sem: cs.sem, weeks: cs.k.weeks, ...data, ...chartState(req.store, cs.key) });
+  }));
+  app.get('/api/excel/mcq-template', auth, h(async (req, res) => {
+    if (!canExcel(req)) return res.status(403).json({ error: 'Not allowed.' });
+    sendXlsx(res, 'MCQ-template.xlsx', await mcqTemplate(req.store.all('courses'), req.store.all('subjects').filter(s => s.exam)));
+  }));
+  app.post('/api/excel/mcq-preview', auth, express.raw({ type: () => true, limit: maxUpload }), h(async (req, res) => {
+    if (!isMaker(req)) return res.status(403).json({ error: 'Only the academic content creator uploads questions.' });
+    if (!req.body || !req.body.length) return res.status(400).json({ error: 'The file is empty.' });
+    let items; try { items = await readMcq(req.body, req.store.all('courses'), req.store.all('subjects'), { course: req.query.course, sem: req.query.sem, sub: req.query.sub }); } catch (e) { return res.status(400).json({ error: e.message }); }
+    if (!items.length) return res.status(400).json({ error: 'No questions found below the heading row.' });
+    /* mark questions already in the bank, so the creator sees what will be skipped */
+    const same = (a, b) => a.course === b.course && a.sem === b.sem && a.sub === b.sub && a.text.toLowerCase().replace(/\s+/g, ' ').trim() === b.text.toLowerCase().replace(/\s+/g, ' ').trim();
+    const bank = req.store.all('questions').filter(q => !q.retired && q.text);
+    items.forEach(it => { if (!it.errors.length && bank.some(q => same(q, it.q))) it.dupe = true; });
+    res.json({ items });
+  }));
 
   /* Uploads: the browser sends the raw file body with its name in a header.
      Hosted, files go to Vercel Blob; on your own computer, to the data folder. */

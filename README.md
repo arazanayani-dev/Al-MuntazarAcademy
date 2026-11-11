@@ -126,6 +126,13 @@ test/           server tests
 - **Sessions:** a session record is created automatically for each scheduled class date once it has passed, so it can be logged. Week numbers are worked out again when a session is cancelled.
 - **Attendance status:** this works as in the prototype. Two absences in a row is *At risk*, four is *In follow-up*, and students who joined in the last 14 days are *New*.
 
+## Excel uploads for academic content
+
+The academic content creator can upload syllabus charts and multiple-choice questions as Excel (.xlsx) files. Each upload is checked and previewed first, then goes to the approver.
+
+- **Syllabus chart:** on the Syllabus chart page, **Download Excel template** (for the chosen course and semester, filled with the current chart), then **Upload Excel**. Columns are Week, Belief, Islamic Laws and Ethics; any subject left out of the file keeps its current topics. If an SSC already exists for a subject in that semester, the app says who approved it and asks before creating a new one. The current chart stays in use until the new one is approved.
+- **Questions:** in the Question bank, **MCQ Excel template**, then **Upload MCQs (Excel)**. Columns are Course, Semester, Subject, Chapter (optional), Question, Option A to D and Correct answer (A to D, or the option's text). Rows with problems are listed and left out; questions already in the bank are skipped.
+
 ## Not built yet
 
 These parts of the prototype are placeholders that need outside services or content:

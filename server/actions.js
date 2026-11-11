@@ -64,6 +64,8 @@ const QTYPES = ['single', 'combo', 'fill', 'match', 'ayah'];
    approves or sends back. Anything added or edited waits for approval before teachers and students see it. */
 const MAKER = ['acmaker'];
 const CHECKER = ['academic', 'super'];
+/* a subject's display name, e.g. b -> Belief */
+const subName = (ctx, key) => { const x = ctx.store.find('subjects', key); return x ? x.name : key; };
 const submitted = (ctx, x) => Object.assign(x, { status: 'pending', submittedBy: ctx.user.name, submittedById: ctx.user.id, submittedOn: ctx.today, reviewNote: '' });
 const REVIEW = { q: 'questions', mat: 'materials', train: 'trainings', trad: 'traditions', promo: 'promotions' };
 /* A student may be promoted to teach a course type only after passing every semester of it: 50% or more in
@@ -952,6 +954,47 @@ export const ACTIONS = {
     need(picked.every(p => p.correct !== '' && p.correct != null), 'A ticked question has no answer yet. Choose its answer or untick it.');
     picked.forEach(p => ctx.store.put('questions', submitted(ctx, { id: uid('q'), course: k.code, sem, sub: sub.key, type: p.q.type, text: p.q.text, options: p.q.options, stmts: p.q.stmts, correct: int(p.correct, 0, 3, 0), retired: false })));
     return { toast: picked.length + ' questions imported and sent for approval' };
+  } },
+  /* A Standard Syllabus Chart from an Excel file: the subjects in the file replace those subjects' topics;
+     the others keep what they have. Where a subject already has a chart (approved or awaiting approval),
+     the creator must confirm they want a new one. It goes live once the approver approves it. */
+  chartImport: { roles: MAKER, run(ctx, a) {
+    const key = str(a.key, 20); const [co, semS] = key.split('-'); const k = course(ctx, co); const sem = int(semS, 1, k.sems, 0); need(sem, 'Unknown semester.');
+    const col = v => Array.from({ length: k.weeks }, (_, i) => str(Array.isArray(v) ? v[i] : '', 300));
+    const incoming = ['b', 'l', 'e'].filter(s => Array.isArray(a[s]) && a[s].some(x => str(x)));
+    need(incoming.length, 'The file has no topics to import.');
+    const live = ctx.store.get('chartData', {})[k.code + '-' + sem]; const drafts = { ...ctx.store.get('chartDrafts', {}) }; const d = drafts[k.code + '-' + sem];
+    const has = (x, s) => x && Array.isArray(x[s]) && x[s].some(Boolean);
+    const clash = incoming.filter(s => has(live, s) || (d && d.status === 'pending' && has(d, s)));
+    need(!clash.length || a.confirmNew === true, 'A syllabus chart already exists for ' + clash.map(s => subName(ctx, s)).join(', ') + ' in ' + k.name + ' Semester ' + sem + '. Confirm you want to create a new one.', 409);
+    /* start from the draft awaiting approval if there is one (so earlier edits are kept), else the live chart */
+    const base = d && d.status === 'pending' ? d : live || {};
+    const next = { b: col(base.b), l: col(base.l), e: col(base.e) };
+    incoming.forEach(s => { next[s] = col(a[s]); });
+    drafts[k.code + '-' + sem] = submitted(ctx, { ...next, source: { kind: 'excel', file: str(a.file, 200), subjects: incoming } });
+    ctx.store.set('chartDrafts', drafts);
+    return { toast: (clash.length ? 'New syllabus chart' : 'Syllabus chart') + ' for ' + incoming.map(s => subName(ctx, s)).join(', ') + ' in ' + k.name + ' Semester ' + sem + ' sent for approval. Teachers see it once it is approved.' };
+  } },
+  /* Multiple-choice questions from an Excel file: each row checked again here; questions already in the bank skipped. */
+  qImportRows: { roles: MAKER, run(ctx, a) {
+    const items = (Array.isArray(a.items) ? a.items : []).slice(0, 2000); need(items.length, 'No questions to import.');
+    const key = q => [q.course, q.sem, q.sub, String(q.text).toLowerCase().replace(/\s+/g, ' ').trim()].join('|');
+    const seen = new Set(ctx.store.all('questions').filter(q => !q.retired && q.text).map(key));
+    let added = 0, skipped = 0;
+    items.forEach((x, i) => {
+      const k = ctx.store.find('courses', str(x && x.course)); need(k, 'Row ' + (i + 1) + ': unknown course.');
+      const sem = int(x.sem, 1, k.sems, 0); need(sem, 'Row ' + (i + 1) + ': unknown semester.');
+      const sub = ctx.store.find('subjects', str(x.sub)); need(sub && sub.exam, 'Row ' + (i + 1) + ': choose an examined subject.');
+      const q = { course: k.code, sem, sub: sub.key, text: str(x.text, 2000), options: (Array.isArray(x.options) ? x.options : []).slice(0, 4).map(o => str(o, 500)), correct: int(x.correct, 0, 3, -1) };
+      need(q.text && q.options.length === 4 && q.options.every(Boolean) && q.correct >= 0, 'Row ' + (i + 1) + ' needs its question, four options and the correct answer.');
+      if (seen.has(key(q))) { skipped++; return; }
+      seen.add(key(q));
+      const chapter = x.chapter ? int(x.chapter, 1, 60, 0) : 0;
+      ctx.store.put('questions', submitted(ctx, { id: uid('q'), ...q, type: 'single', retired: false, ...(chapter ? { chapter } : {}), source: 'excel' }));
+      added++;
+    });
+    need(added, skipped ? 'Every question in the file is already in the bank.' : 'No questions to import.');
+    return { toast: added + (added === 1 ? ' question' : ' questions') + ' imported and sent for approval.' + (skipped ? ' ' + skipped + ' already in the bank ' + (skipped === 1 ? 'was' : 'were') + ' skipped.' : '') };
   } },
   tradAdd: { roles: MAKER, run(ctx, a) {
     const text = str(a.text, 4000), source = str(a.source, 500); need(text && source, 'Enter the text and its source.');

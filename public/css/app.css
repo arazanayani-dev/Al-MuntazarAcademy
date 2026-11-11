@@ -425,3 +425,6 @@ h2{font-weight:700;letter-spacing:.005em}
   .modal.modal-cert>.btns,.modal.modal-cert>.err{display:none!important}
   .cc{box-shadow:none;border-radius:0;width:297mm}
 }
+.upbtn{display:inline-flex;align-items:center;cursor:pointer}
+.upbtn:focus-within{outline:3px solid var(--gold-ink);outline-offset:2px}
+.modal.modal-wide{max-width:960px}
